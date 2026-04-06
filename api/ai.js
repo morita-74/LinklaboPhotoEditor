@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { prompt, image } = req.body;
+  const { prompt, image, mask } = req.body;
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
@@ -16,8 +16,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 最新モデル gemini-1.5-flash を使用 (画像生成/画像編集に対応しているバージョンを選択)
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+    const parts = [
+      { text: prompt },
+      { inlineData: { mimeType: "image/png", data: image } }
+    ];
+
+    if (mask) {
+      parts.push({ text: "Below is the mask image. The red colored areas indicate the objects to be removed or replaced. Please fill them naturally based on the background context of the first image." });
+      parts.push({ inlineData: { mimeType: "image/png", data: mask } });
+    }
 
     const response = await fetch(url, {
       method: 'POST',
@@ -25,21 +34,8 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: prompt },
-              {
-                inlineData: {
-                  mimeType: "image/png",
-                  data: image
-                }
-              }
-            ]
-          }
-        ],
+        contents: [{ parts }],
         generationConfig: {
-          // 画像編集・生成を期待するための設定 (モデルが対応している場合に有効)
           responseModalities: ["IMAGE"]
         }
       }),
