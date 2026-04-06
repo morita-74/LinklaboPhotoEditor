@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シンプル写真加工アプリ - OpenCV不要版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/imagetracerjs@1.2.6/imagetracer_v1.2.6.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        #app-container {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 10px;
+        }
+        @media (min-width: 1024px) {
+            #app-container {
+                flex-direction: row;
+                align-items: flex-start;
+            }
+        }
+        
+        #editor-canvas-wrapper {
+            position: relative;
+            flex-grow: 1;
+            background-color: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+            aspect-ratio: 16 / 9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #editor-canvas {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            background-color: #333;
+            cursor: default;
+        }
+        
+        .overlay-message {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .control-panel {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            min-width: 300px;
+            overflow-y: auto;
+            max-height: 90vh;
+        }
+        
+        .tab-button {
+            padding: 10px 15px;
+            border-radius: 8px 8px 0 0;
+            border-bottom: 3px solid transparent;
+            font-weight: bold;
+            color: #999;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .tab-button.active {
+            color: #3b82f6;
+            border-color: #3b82f6;
+            background-color: #2a2a2a;
+        }
+        .tab-button:hover:not(.active) {
+            color: #bbb;
+            background-color: #222;
+        }
+        .tab-content {
+            display: none;
+            padding-top: 15px;
+            border-top: 1px solid #333;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes flash-animation {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        .flash-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 60;
+        }
+        .flash-active {
+            animation: flash-animation 0.5s ease-out;
+        }
+        
+        .radio-group input[type="radio"] {
+            display: none;
+        }
+        .radio-group label {
+            display: inline-block;
+            cursor: pointer;
+            padding: 6px 12px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: #ccc;
+            transition: all 0.2s;
+            text-align: center;
+            flex: 1;
+        }
+        .radio-group input[type="radio"]:checked + label {
+            background-color: #ec4899;
+            color: white;
+            border-color: #ec4899;
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <div id="app-container">
+        <div class="flex-1 w-full">
+            <div id="editor-canvas-wrapper">
+                <canvas id="editor-canvas"></canvas>
+                <div id="flash-effect" class="flash-overlay"></div>
+                <div id="status-overlay" class="overlay-message hidden">
+                    <div class="animate-spin rounded-full h-12 w-12 border-4 border-t-4 border-blue-500 border-gray-600 mb-4"></div>
+                    <h3 class="text-xl font-bold text-white mb-2" id="status-title">処理中...</h3>
+                    <p id="status-text" class="text-gray-400 text-sm">しばらくお待ちください</p>
+                </div>
+                <!-- 初期画面オーバーレイ -->
+                <div id="init-overlay" class="overlay-message bg-gray-900/90">
+                    <h3 class="text-2xl font-bold text-white mb-4">シンプル写真加工アプリ</h3>
+                    <div class="mt-4 flex flex-col gap-3 w-full max-w-md">
+                        <label class="bg-blue-600 hover:bg-blue-700 text-white py-4 px-6 rounded-lg cursor-pointer transition text-center text-lg font-bold shadow-lg">
+                            画像を選択して開始
+                            <input type="file" id="initial-image-input" accept="image/*" class="hidden">
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-2 flex justify-between text-xs text-gray-500 font-mono">
+                <span id="image-resolution">Resolution: -</span>
+                <span id="processing-status">Status: Idle</span>
+            </div>
+        </div>
+
+        <div class="control-panel w-full lg:w-80">
+            <h2 class="text-xl font-bold mb-4 text-white border-b border-gray-700 pb-3">🎨 写真加工 & アート</h2>
+
+            <div class="flex border-b border-gray-700 mb-4 overflow-x-auto">
+                <button class="tab-button active flex-shrink-0" data-tab="upload">ファイル</button>
+                <button class="tab-button flex-shrink-0" data-tab="bg-remove">切り抜き</button>
+                <button class="tab-button flex-shrink-0" data-tab="adjustments">画像加工</button>
+                <button class="tab-button flex-shrink-0" data-tab="dither">ディザリング</button>
+                <button class="tab-button flex-shrink-0" data-tab="ai-line-art">AI線図</button>
+                <button class="tab-button flex-shrink-0" data-tab="filters">フィルタ</button>
+                <button class="tab-button flex-shrink-0" data-tab="ai-edit">AI加工</button>
+            </div>
+
+            <div id="tab-upload" class="tab-content active space-y-5">
+                <div>
+                    <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">画像を読み込む</label>
+                    <input type="file" id="image-upload-input" accept="image/*" class="block w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer border border-gray-700 rounded bg-gray-800">
+                </div>
+                <div class="mt-6 bg-gray-800 p-4 rounded border border-gray-700 text-center">
+                    <button id="btn-save-image" type="button" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded shadow-lg transition flex items-center justify-center gap-2">
+                        画像を保存 (PNG)
+                    </button>
+                </div>
+                <div class="pt-4 border-t border-gray-700">
+                    <button id="btn-undo" class="w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition">元の画像に戻す</button>
+                </div>
+            </div>
+
+            <div id="tab-bg-remove" class="tab-content space-y-5">
+                <div>
+                    <h3 class="text-sm font-bold text-white mb-2">背景透過</h3>
+                    <button id="btn-remove-bg" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded transition">自動背景透過 (簡易クロマキー)</button>
+                </div>
+
+                <div class="mt-8 border-t border-gray-700 pt-5">
+                    <h3 class="text-sm font-bold text-white mb-2">線の太さ調整 (線画・文字用)</h3>
+                    <div class="space-y-4 bg-gray-800 p-3 rounded border border-gray-700">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block flex justify-between">
+                                強度: <span id="line-weight-value" class="text-white">1</span>
+                            </label>
+                            <input type="range" id="line-weight-slider" min="1" max="5" step="1" value="1" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="btn-thicken-line" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-2 rounded transition text-xs">太くする</button>
+                            <button id="btn-thin-line" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-2 rounded transition text-xs">細くする</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 border-t border-gray-700 pt-5">
+                    <h3 class="text-sm font-bold text-white mb-2">AI物体消去</h3>
+                    <button id="btn-enable-inpaint" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded transition">消去モード開始</button>
+                    <button id="btn-cancel-inpaint" class="w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-4 rounded transition mt-2 hidden">キャンセル</button>
+                    <p id="inpaint-instruction" class="text-yellow-400 text-xs mt-2 hidden font-bold">ドラッグで範囲を選択してください</p>
+                </div>
+            </div>
+
+            <div id="tab-adjustments" class="tab-content space-y-6">
+                <div>
+                    <h3 class="text-sm font-bold text-white mb-2 text-green-400">明るさ・コントラスト</h3>
+                    <div class="space-y-4 bg-gray-800 p-3 rounded border border-gray-700">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block flex justify-between">
+                                明るさ: <span id="adj-brightness-val" class="text-white">0</span>
+                            </label>
+                            <input type="range" id="adj-brightness" min="-100" max="100" step="1" value="0" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block flex justify-between">
+                                コントラスト: <span id="adj-contrast-val" class="text-white">1.0</span>
+                            </label>
+                            <input type="range" id="adj-contrast" min="0.0" max="3.0" step="0.1" value="1.0" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-500">
+                        </div>
+                        <button id="btn-apply-bc" class="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-2 px-4 rounded text-xs transition">調整を適用</button>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-700 pt-4">
+                     <h3 class="text-sm font-bold text-white mb-2">回転・反転</h3>
+                     <div class="grid grid-cols-2 gap-2">
+                         <button id="btn-rotate-left" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded text-xs transition">↺ 左90°</button>
+                         <button id="btn-rotate-right" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded text-xs transition">↻ 右90°</button>
+                         <button id="btn-flip-h" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded text-xs transition">↔ 左右反転</button>
+                         <button id="btn-flip-v" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded text-xs transition">↕ 上下反転</button>
+                     </div>
+                </div>
+
+                <div class="border-t border-gray-700 pt-4">
+                    <h3 class="text-sm font-bold text-white mb-2">エフェクト</h3>
+                    <div class="flex gap-2">
+                        <button id="btn-blur" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded text-xs transition">ぼかし</button>
+                        <button id="btn-sharpen" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded text-xs transition">シャープ化</button>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-700 pt-4">
+                    <h3 class="text-sm font-bold text-white mb-2 text-blue-400">AI高画質化 (実験的)</h3>
+                    <button id="btn-ai-upscale" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded text-xs transition flex items-center justify-center gap-2 shadow-lg">✨ 画質を向上させる</button>
+                </div>
+
+                <div class="border-t border-gray-700 pt-4">
+                    <h3 class="text-sm font-bold text-white mb-2 text-yellow-400">AIアニメ・漫画補正</h3>
+                    <div class="flex gap-2">
+                         <button id="btn-flat-color" class="flex-1 bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-2 px-3 rounded text-xs transition">✨ フラット化</button>
+                         <button id="btn-posterize" class="flex-1 bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-2 px-3 rounded text-xs transition">✨ 色をまとめる</button>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-700 pt-4">
+                    <h3 class="text-sm font-bold text-white mb-2 text-teal-400">ベクター変換 (SVG)</h3>
+                    <div class="space-y-3 bg-gray-800 p-3 rounded border border-gray-700">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block flex justify-between">色数: <span id="svg-colors-val" class="text-white">16</span></label>
+                            <input type="range" id="svg-colors" min="2" max="64" step="1" value="16" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-teal-500">
+                        </div>
+                        <button id="btn-make-svg" class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-4 rounded text-xs transition">SVGに変換</button>
+                        <div id="svg-result-area" class="hidden mt-2">
+                            <textarea id="svg-code-output" rows="3" class="w-full bg-gray-900 text-gray-400 text-[10px] border border-gray-600 rounded p-2 font-mono mb-2" readonly></textarea>
+                            <button id="btn-download-svg" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded text-xs transition">SVGを保存</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-dither" class="tab-content space-y-5">
+                <div>
+                    <h3 class="text-sm font-bold text-white mb-2 text-orange-400">標準ディザリング</h3>
+                    <div class="space-y-4 bg-gray-800 p-3 rounded border border-gray-700">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block flex justify-between">コントラスト: <span id="dither-contrast-value" class="text-white">1.0</span></label>
+                            <input type="range" id="dither-contrast-slider" min="0.5" max="3.0" step="0.1" value="1.0" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">出力階調</label>
+                            <select id="dither-mode-select" class="w-full bg-gray-900 text-white text-xs border border-gray-600 rounded p-2 outline-none focus:border-orange-500">
+                                <option value="bw">白黒二値 (2階調)</option>
+                                <option value="gray4">グレースケール (4階調)</option>
+                                <option value="gray8">グレースケール (8階調)</option>
+                                <option value="color8">カラー (8色 - 3bit)</option>
+                                <option value="color64">カラー (64色 - 6bit)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2 pt-1">
+                            <input type="checkbox" id="dither-transparent-check" class="w-4 h-4 bg-gray-700 border-gray-600 rounded cursor-pointer">
+                            <label for="dither-transparent-check" class="text-[11px] text-gray-300 cursor-pointer select-none">白色部分を透過する</label>
+                        </div>
+                    </div>
+                    <button id="btn-apply-dither" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 px-4 rounded mt-2 transition shadow-lg">ディザリングを実行</button>
+                </div>
+
+                <div class="mt-4 border-t border-gray-700 pt-4">
+                    <h3 class="text-sm font-bold text-white mb-2 text-pink-400">ハーフトーン (丸ドット)</h3>
+                    <div class="space-y-4 bg-gray-800 p-3 rounded border border-gray-700">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block flex justify-between">ドットサイズ: <span id="dot-size-value" class="text-white">5</span>px</label>
+                            <input type="range" id="dot-size-slider" min="2" max="20" step="1" value="5" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-pink-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">ドット種類</label>
+                            <div class="flex gap-2 radio-group">
+                                <div class="flex-1"><input type="radio" id="dot-mode-black" name="dot-mode" value="black" checked><label for="dot-mode-black" class="w-full">黒丸</label></div>
+                                <div class="flex-1"><input type="radio" id="dot-mode-white" name="dot-mode" value="white"><label for="dot-mode-white" class="w-full">白丸</label></div>
+                                <div class="flex-1"><input type="radio" id="dot-mode-color" name="dot-mode" value="color"><label for="dot-mode-color" class="w-full">カラー</label></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="btn-apply-halftone" class="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-3 px-4 rounded mt-4 transition shadow-lg">ドット変換を実行</button>
+                </div>
+            </div>
+
+            <div id="tab-ai-line-art" class="tab-content space-y-5">
+                <div>
+                    <h3 class="text-sm font-bold text-white mb-2 text-cyan-400">AI線図変換</h3>
+                    <div class="space-y-4 bg-gray-800 p-3 rounded border border-gray-700">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">変換スタイル</label>
+                            <select id="ai-line-style-select" class="w-full bg-gray-900 text-white text-xs border border-gray-600 rounded p-2 outline-none focus:border-cyan-500">
+                                <option value="clean">精密な白黒線画 (Clean Line Art)</option>
+                                <option value="blueprint">青写真風 (Blueprint style)</option>
+                                <option value="technical">テクニカルイラスト (Technical Drawing)</option>
+                                <option value="pencil">鉛筆デッサン風 (Pencil Sketch)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button id="btn-ai-line-art" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-4 rounded mt-4 transition shadow-lg">AIで線図に変換</button>
+                    <p id="ai-line-error-msg" class="text-red-400 text-xs mt-2 hidden"></p>
+                </div>
+            </div>
+
+            <div id="tab-filters" class="tab-content space-y-6">
+                <div>
+                    <h3 class="text-md font-bold text-white mb-3 text-yellow-500">アート & 線画</h3>
+                    <div class="space-y-3">
+                        <button id="btn-sketch-realistic" class="w-full bg-stone-600 hover:bg-stone-500 text-white font-bold py-2 px-4 rounded transition border border-stone-500">✏️ リアルスケッチ化</button>
+                        <button id="btn-sketch-comic" class="w-full bg-white hover:bg-gray-200 text-black font-bold py-2 px-4 rounded transition border border-gray-300">✒️ 線画抽出</button>
+                    </div>
+                </div>
+                <div class="border-t border-gray-700 pt-4">
+                    <h3 class="text-md font-bold text-white mb-3">基本調整</h3>
+                    <button id="btn-invert-bw" class="w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition">白黒反転</button>                    
+                    <div class="flex gap-2 mt-4">
+                        <button id="btn-grayscale" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition">通常白黒</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-ai-edit" class="tab-content space-y-5">
+                <div>
+                    <h3 class="text-md font-bold text-white mb-2 text-purple-400">AIで自由に編集</h3>
+                    <textarea id="ai-prompt-input" rows="3" class="w-full bg-gray-800 text-white text-sm border border-gray-600 rounded p-3 mb-3" placeholder="指示を入力..."></textarea>
+                    <button id="btn-ai-generate" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-4 rounded shadow-lg transition">AIにお願いする</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const editorCanvas = document.getElementById('editor-canvas');
+        const ctx = editorCanvas.getContext('2d', { willReadFrequently: true });
+        const statusOverlay = document.getElementById('status-overlay');
+        const statusTitle = document.getElementById('status-title');
+        const statusText = document.getElementById('status-text');
+        const initOverlay = document.getElementById('init-overlay');
+        const flashEffect = document.getElementById('flash-effect');
+
+        // Vercel Serverless Function (/api/ai) を通じて Gemini API を呼び出します
+        // APIキーは Vercel の環境変数 GEMINI_API_KEY に設定してください。
+        let originalImage = null; 
+        let isInpaintMode = false;
+        let startPoint = { x: 0, y: 0 };
+        let isDrawingRect = false;
+        let imgDisplayScale = 1;
+
+        function showStatus(title, text) {
+            statusTitle.innerText = title;
+            statusText.innerText = text;
+            statusOverlay.classList.remove('hidden');
+        }
+        function hideStatus() {
+            statusOverlay.classList.add('hidden');
+            document.getElementById('processing-status').innerText = "Status: Ready";
+        }
+
+        const dropArea = document.getElementById("editor-canvas-wrapper");
+        ["dragenter", "dragover", "dragleave", "drop"].forEach(name => {
+            dropArea.addEventListener(name, (e) => { e.preventDefault(); e.stopPropagation(); });
+        });
+        dropArea.addEventListener("drop", (e) => {
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith("image/")) loadImage(file);
+        });
+
+        function loadImage(file) {
+            if (!file) return;
+            initOverlay.classList.add('hidden');
+            showStatus("読み込み中...", "画像をキャンバスに展開しています");
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    originalImage = img;
+                    syncCanvasSize(img.naturalWidth, img.naturalHeight);
+                    ctx.drawImage(img, 0, 0);
+                    hideStatus();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function loadFromBase64(base64Str) {
+            const img = new Image();
+            img.onload = () => {
+                syncCanvasSize(img.naturalWidth, img.naturalHeight);
+                ctx.drawImage(img, 0, 0);
+            };
+            img.src = `data:image/png;base64,${base64Str}`;
+        }
+
+        function syncCanvasSize(width, height) {
+            editorCanvas.width = width;
+            editorCanvas.height = height;
+            document.getElementById('editor-canvas-wrapper').style.aspectRatio = `${width}/${height}`;
+            document.getElementById('image-resolution').innerText = `Resolution: ${width}x${height}`;
+        }
+
+        document.getElementById('btn-save-image').addEventListener('click', () => {
+            flashEffect.classList.add('flash-active');
+            setTimeout(() => flashEffect.classList.remove('flash-active'), 500);
+            const link = document.createElement('a');
+            link.download = `edited_${Date.now()}.png`;
+            link.href = editorCanvas.toDataURL();
+            link.click();
+        });
+
+        document.getElementById('btn-undo').addEventListener('click', () => {
+            if (!originalImage) return;
+            syncCanvasSize(originalImage.naturalWidth, originalImage.naturalHeight);
+            ctx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
+            ctx.drawImage(originalImage, 0, 0);
+            
+            flashEffect.classList.remove('flash-active');
+            void flashEffect.offsetWidth; 
+            flashEffect.classList.add('flash-active');
+            document.getElementById('processing-status').innerText = "Status: Reset to Original";
+        });
+
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabButtons.forEach(b => b.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(`tab-${btn.getAttribute('data-tab')}`).classList.add('active');
+            });
+        });
+
+        // ================= JS Pixel Processing Utilities =================
+        function processPixels(processFn) {
+            const imgData = ctx.getImageData(0, 0, editorCanvas.width, editorCanvas.height);
+            const data = imgData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                processFn(data, i);
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        function transformCanvas(drawFn, newW, newH) {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = editorCanvas.width;
+            tempCanvas.height = editorCanvas.height;
+            tempCanvas.getContext('2d').drawImage(editorCanvas, 0, 0);
+            
+            syncCanvasSize(newW, newH);
+            ctx.clearRect(0, 0, newW, newH);
+            ctx.save();
+            drawFn(ctx, tempCanvas);
+            ctx.restore();
+        }
+
+        function applyConvolution(kernel) {
+            const w = editorCanvas.width;
+            const h = editorCanvas.height;
+            const srcData = ctx.getImageData(0, 0, w, h).data;
+            const output = ctx.createImageData(w, h);
+            const dstData = output.data;
+            const side = Math.round(Math.sqrt(kernel.length));
+            const halfSide = Math.floor(side / 2);
+
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    const dstOff = (y * w + x) * 4;
+                    let r = 0, g = 0, b = 0;
+                    for (let cy = 0; cy < side; cy++) {
+                        for (let cx = 0; cx < side; cx++) {
+                            const scy = Math.min(Math.max(y + cy - halfSide, 0), h - 1);
+                            const scx = Math.min(Math.max(x + cx - halfSide, 0), w - 1);
+                            const srcOff = (scy * w + scx) * 4;
+                            const wt = kernel[cy * side + cx];
+                            r += srcData[srcOff] * wt;
+                            g += srcData[srcOff + 1] * wt;
+                            b += srcData[srcOff + 2] * wt;
+                        }
+                    }
+                    dstData[dstOff] = r; dstData[dstOff + 1] = g; dstData[dstOff + 2] = b;
+                    dstData[dstOff + 3] = srcData[dstOff + 3];
+                }
+            }
+            ctx.putImageData(output, 0, 0);
+        }
+
+        // ================= 画像加工 (Adjustments) =================
+        const brightnessSlider = document.getElementById('adj-brightness');
+        const brightnessVal = document.getElementById('adj-brightness-val');
+        const contrastSlider = document.getElementById('adj-contrast');
+        const contrastVal = document.getElementById('adj-contrast-val');
+        brightnessSlider.addEventListener('input', () => brightnessVal.innerText = brightnessSlider.value);
+        contrastSlider.addEventListener('input', () => contrastVal.innerText = contrastSlider.value);
+
+        document.getElementById('btn-apply-bc').addEventListener('click', () => {
+            const b = parseInt(brightnessSlider.value);
+            const c = parseFloat(contrastSlider.value);
+            processPixels((data, i) => {
+                data[i] = Math.min(Math.max((data[i] - 128) * c + 128 + b, 0), 255);
+                data[i+1] = Math.min(Math.max((data[i+1] - 128) * c + 128 + b, 0), 255);
+                data[i+2] = Math.min(Math.max((data[i+2] - 128) * c + 128 + b, 0), 255);
+            });
+            document.getElementById('processing-status').innerText = "Applied: Brightness/Contrast";
+        });
+
+        document.getElementById('btn-rotate-left').addEventListener('click', () => {
+            transformCanvas((c, img) => {
+                c.translate(0, editorCanvas.height);
+                c.rotate(-Math.PI / 2);
+                c.drawImage(img, 0, 0);
+            }, editorCanvas.height, editorCanvas.width);
+        });
+        document.getElementById('btn-rotate-right').addEventListener('click', () => {
+            transformCanvas((c, img) => {
+                c.translate(editorCanvas.width, 0);
+                c.rotate(Math.PI / 2);
+                c.drawImage(img, 0, 0);
+            }, editorCanvas.height, editorCanvas.width);
+        });
+        document.getElementById('btn-flip-h').addEventListener('click', () => {
+            transformCanvas((c, img) => {
+                c.translate(editorCanvas.width, 0);
+                c.scale(-1, 1);
+                c.drawImage(img, 0, 0);
+            }, editorCanvas.width, editorCanvas.height);
+        });
+        document.getElementById('btn-flip-v').addEventListener('click', () => {
+            transformCanvas((c, img) => {
+                c.translate(0, editorCanvas.height);
+                c.scale(1, -1);
+                c.drawImage(img, 0, 0);
+            }, editorCanvas.width, editorCanvas.height);
+        });
+
+        document.getElementById('btn-blur').addEventListener('click', () => {
+            ctx.filter = 'blur(5px)';
+            const temp = document.createElement('canvas');
+            temp.width = editorCanvas.width; temp.height = editorCanvas.height;
+            temp.getContext('2d').drawImage(editorCanvas, 0, 0);
+            ctx.drawImage(temp, 0, 0);
+            ctx.filter = 'none';
+        });
+        document.getElementById('btn-sharpen').addEventListener('click', () => {
+            showStatus("処理中...", "シャープ化を適用しています");
+            setTimeout(() => {
+                applyConvolution([0, -1, 0, -1, 5, -1, 0, -1, 0]);
+                hideStatus();
+            }, 50);
+        });
+
+        // ================= 背景透過 & モルフォロジー =================
+        document.getElementById('btn-remove-bg').addEventListener('click', () => {
+            const imgData = ctx.getImageData(0, 0, editorCanvas.width, editorCanvas.height);
+            const data = imgData.data;
+            // 下部中央のピクセルを背景色とみなす
+            const targetX = Math.floor(editorCanvas.width / 2);
+            const targetY = editorCanvas.height - 10;
+            const targetIdx = (targetY * editorCanvas.width + targetX) * 4;
+            const r0 = data[targetIdx], g0 = data[targetIdx+1], b0 = data[targetIdx+2];
+            const tolerance = 40;
+
+            for (let i = 0; i < data.length; i += 4) {
+                if (Math.abs(data[i] - r0) < tolerance && 
+                    Math.abs(data[i+1] - g0) < tolerance && 
+                    Math.abs(data[i+2] - b0) < tolerance) {
+                    data[i+3] = 0;
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+        });
+
+        const lineWeightSlider = document.getElementById('line-weight-slider');
+        const lineWeightValue = document.getElementById('line-weight-value');
+        lineWeightSlider.addEventListener('input', () => lineWeightValue.innerText = lineWeightSlider.value);
+
+        function applyMorphology(op) {
+            showStatus("処理中...", "線の太さを計算しています");
+            setTimeout(() => {
+                const w = editorCanvas.width, h = editorCanvas.height;
+                const src = ctx.getImageData(0, 0, w, h).data;
+                const out = ctx.createImageData(w, h);
+                const dst = out.data;
+                const k = parseInt(lineWeightSlider.value);
+                
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        let minR = 255, maxR = 0, minG = 255, maxG = 0, minB = 255, maxB = 0;
+                        for (let cy = -k; cy <= k; cy++) {
+                            for (let cx = -k; cx <= k; cx++) {
+                                const sy = Math.min(Math.max(y + cy, 0), h - 1);
+                                const sx = Math.min(Math.max(x + cx, 0), w - 1);
+                                const idx = (sy * w + sx) * 4;
+                                if(src[idx] < minR) minR = src[idx]; if(src[idx] > maxR) maxR = src[idx];
+                                if(src[idx+1] < minG) minG = src[idx+1]; if(src[idx+1] > maxG) maxG = src[idx+1];
+                                if(src[idx+2] < minB) minB = src[idx+2]; if(src[idx+2] > maxB) maxB = src[idx+2];
+                            }
+                        }
+                        const outIdx = (y * w + x) * 4;
+                        if (op === 'erode') { // 黒線を太く (暗い色を採用)
+                            dst[outIdx] = minR; dst[outIdx+1] = minG; dst[outIdx+2] = minB;
+                        } else { // 黒線を細く (明るい色を採用)
+                            dst[outIdx] = maxR; dst[outIdx+1] = maxG; dst[outIdx+2] = maxB;
+                        }
+                        dst[outIdx+3] = src[outIdx+3];
+                    }
+                }
+                ctx.putImageData(out, 0, 0);
+                hideStatus();
+            }, 50);
+        }
+        document.getElementById('btn-thicken-line').addEventListener('click', () => applyMorphology('erode'));
+        document.getElementById('btn-thin-line').addEventListener('click', () => applyMorphology('dilate'));
+
+        // ================= フィルタ類 =================
+        document.getElementById('btn-invert-bw').addEventListener('click', () => {
+            processPixels((d, i) => {
+                const g = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+                const inv = 255 - g;
+                d[i] = d[i+1] = d[i+2] = inv;
+            });
+        });
+
+        document.getElementById('btn-grayscale').addEventListener('click', () => {
+            processPixels((d, i) => {
+                const g = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+                d[i] = d[i+1] = d[i+2] = g;
+            });
+        });
+
+        document.getElementById('btn-sketch-realistic').addEventListener('click', () => {
+            const w = editorCanvas.width, h = editorCanvas.height;
+            const base = document.createElement('canvas'); base.width = w; base.height = h;
+            const baseCtx = base.getContext('2d');
+            baseCtx.drawImage(editorCanvas, 0, 0);
+            
+            // 1. Grayscale
+            const imgData = baseCtx.getImageData(0, 0, w, h);
+            for (let i = 0; i < imgData.data.length; i += 4) {
+                const g = 0.299 * imgData.data[i] + 0.587 * imgData.data[i+1] + 0.114 * imgData.data[i+2];
+                imgData.data[i] = imgData.data[i+1] = imgData.data[i+2] = g;
+            }
+            baseCtx.putImageData(imgData, 0, 0);
+            ctx.drawImage(base, 0, 0); // Grayscale as bottom layer
+
+            // 2. Invert & Blur
+            for (let i = 0; i < imgData.data.length; i += 4) {
+                imgData.data[i] = 255 - imgData.data[i];
+                imgData.data[i+1] = 255 - imgData.data[i+1];
+                imgData.data[i+2] = 255 - imgData.data[i+2];
+            }
+            baseCtx.putImageData(imgData, 0, 0);
+            baseCtx.filter = 'blur(10px)';
+            baseCtx.drawImage(base, 0, 0);
+            baseCtx.filter = 'none';
+
+            // 3. Color Dodge
+            ctx.globalCompositeOperation = 'color-dodge';
+            ctx.drawImage(base, 0, 0);
+            ctx.globalCompositeOperation = 'source-over';
+        });
+
+        document.getElementById('btn-sketch-comic').addEventListener('click', () => {
+            // 簡易エッジ抽出 (Sobel) + 二値化
+            showStatus("処理中...", "線画を抽出しています");
+            setTimeout(() => {
+                const w = editorCanvas.width, h = editorCanvas.height;
+                const src = ctx.getImageData(0, 0, w, h).data;
+                const out = ctx.createImageData(w, h);
+                const dst = out.data;
+                
+                const gray = new Uint8Array(w * h);
+                for (let i = 0; i < src.length; i += 4) {
+                    gray[i/4] = 0.299 * src[i] + 0.587 * src[i+1] + 0.114 * src[i+2];
+                }
+
+                for (let y = 1; y < h - 1; y++) {
+                    for (let x = 1; x < w - 1; x++) {
+                        const gx = -gray[(y-1)*w + (x-1)] + gray[(y-1)*w + (x+1)]
+                                 - 2*gray[y*w + (x-1)] + 2*gray[y*w + (x+1)]
+                                 - gray[(y+1)*w + (x-1)] + gray[(y+1)*w + (x+1)];
+                        const gy = -gray[(y-1)*w + (x-1)] - 2*gray[(y-1)*w + x] - gray[(y-1)*w + (x+1)]
+                                 + gray[(y+1)*w + (x-1)] + 2*gray[(y+1)*w + x] + gray[(y+1)*w + (x+1)];
+                        
+                        const mag = Math.sqrt(gx*gx + gy*gy);
+                        const v = mag > 50 ? 0 : 255; // Threshold
+                        const idx = (y * w + x) * 4;
+                        dst[idx] = dst[idx+1] = dst[idx+2] = v;
+                        dst[idx+3] = 255;
+                    }
+                }
+                ctx.putImageData(out, 0, 0);
+                hideStatus();
+            }, 50);
+        });
+
+        // ================= ディザリング & ハーフトーン =================
+        document.getElementById('dither-contrast-slider').addEventListener('input', (e) => document.getElementById('dither-contrast-value').innerText = e.target.value);
+        document.getElementById('dot-size-slider').addEventListener('input', (e) => document.getElementById('dot-size-value').innerText = e.target.value);
+
+        document.getElementById('btn-apply-dither').addEventListener('click', () => {
+            showStatus("処理中...", "ディザリング処理を行っています");
+            setTimeout(() => {
+                const contrast = parseFloat(document.getElementById('dither-contrast-slider').value);
+                const mode = document.getElementById('dither-mode-select').value;
+                const isTransparent = document.getElementById('dither-transparent-check').checked;
+                const isColor = mode.startsWith('color');
+                
+                let levels = 2;
+                if (mode === 'gray4') levels = 4; else if (mode === 'gray8') levels = 8;
+                else if (mode === 'color8') levels = 2; else if (mode === 'color64') levels = 4;
+                const step = 255 / (levels - 1);
+
+                const w = editorCanvas.width, h = editorCanvas.height;
+                const imgData = ctx.getImageData(0, 0, w, h);
+                const data = imgData.data;
+
+                // Grayscale/Contrast init
+                for (let i = 0; i < data.length; i += 4) {
+                    if (!isColor) {
+                        const g = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+                        data[i] = data[i+1] = data[i+2] = g;
+                    }
+                    if (contrast !== 1.0) {
+                        data[i] = (data[i] - 128) * contrast + 128;
+                        data[i+1] = (data[i+1] - 128) * contrast + 128;
+                        data[i+2] = (data[i+2] - 128) * contrast + 128;
+                    }
+                }
+
+                // Floyd-Steinberg
+                const floatData = new Float32Array(data);
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        const maxCh = isColor ? 3 : 1;
+                        for (let c = 0; c < maxCh; c++) {
+                            const idx = (y * w + x) * 4 + c;
+                            const oldP = floatData[idx];
+                            const newP = Math.round(Math.min(Math.max(oldP, 0), 255) / step) * step;
+                            floatData[idx] = newP;
+                            if(!isColor) { floatData[idx+1] = newP; floatData[idx+2] = newP; }
+                            
+                            const err = oldP - newP;
+                            if (x + 1 < w) floatData[idx + 4] += err * 7 / 16;
+                            if (y + 1 < h) {
+                                if (x > 0) floatData[idx + w * 4 - 4] += err * 3 / 16;
+                                floatData[idx + w * 4] += err * 5 / 16;
+                                if (x + 1 < w) floatData[idx + w * 4 + 4] += err * 1 / 16;
+                            }
+                        }
+                    }
+                }
+
+                for (let i = 0; i < data.length; i++) data[i] = floatData[i];
+                
+                if (isTransparent) {
+                    for (let i = 0; i < data.length; i += 4) {
+                        if (data[i] > 250 && data[i+1] > 250 && data[i+2] > 250) data[i+3] = 0;
+                    }
+                }
+                ctx.putImageData(imgData, 0, 0);
+                hideStatus();
+            }, 50);
+        });
+
+        document.getElementById('btn-apply-halftone').addEventListener('click', () => {
+            showStatus("処理中...", "ドット加工を行っています");
+            setTimeout(() => {
+                const cellSize = parseInt(document.getElementById('dot-size-slider').value);
+                const mode = document.querySelector('input[name="dot-mode"]:checked').value;
+                const w = editorCanvas.width, h = editorCanvas.height;
+                const srcData = ctx.getImageData(0, 0, w, h).data;
+                
+                ctx.fillStyle = mode === 'white' ? '#000' : '#FFF';
+                ctx.fillRect(0, 0, w, h);
+                const maxR = (cellSize / 2) * 0.9;
+
+                for (let y = 0; y < h; y += cellSize) {
+                    for (let x = 0; x < w; x += cellSize) {
+                        let tI = 0, rS = 0, gS = 0, bS = 0, cnt = 0;
+                        for (let by = 0; by < cellSize; by++) {
+                            for (let bx = 0; bx < cellSize; bx++) {
+                                if (y+by < h && x+bx < w) {
+                                    const i = ((y+by)*w + (x+bx)) * 4;
+                                    tI += 0.299*srcData[i] + 0.587*srcData[i+1] + 0.114*srcData[i+2];
+                                    if(mode==='color'){ rS+=srcData[i]; gS+=srcData[i+1]; bS+=srcData[i+2]; }
+                                    cnt++;
+                                }
+                            }
+                        }
+                        if (cnt === 0) continue;
+                        const avgI = tI / cnt;
+                        let r = mode === 'white' ? maxR * Math.pow(avgI/255, 1.2) : maxR * Math.pow((255-avgI)/255, 1.2);
+                        
+                        if (r > 0.5) {
+                            ctx.beginPath();
+                            ctx.arc(x + cellSize/2, y + cellSize/2, r, 0, 2*Math.PI);
+                            if(mode==='black') ctx.fillStyle = '#000';
+                            else if(mode==='white') ctx.fillStyle = '#FFF';
+                            else ctx.fillStyle = `rgb(${Math.round(rS/cnt)},${Math.round(gS/cnt)},${Math.round(bS/cnt)})`;
+                            ctx.fill();
+                        }
+                    }
+                }
+                hideStatus();
+            }, 50);
+        });
+
+        // ================= API 呼び出し系 (Gemini) =================
+        async function callGeminiVision(prompt, base64) {
+            const res = await fetch('/api/ai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt, image: base64 })
+            });
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error || "API Error");
+            }
+            const result = await res.json();
+            return result.image;
+        }
+
+        async function handleAIGeneration(btnId, prompt, statusT, statusD) {
+            const btn = document.getElementById(btnId);
+            btn.disabled = true; btn.classList.add('opacity-50');
+            showStatus(statusT, statusD);
+            try {
+                const b64 = editorCanvas.toDataURL('image/png').split(',')[1];
+                const outB64 = await callGeminiVision(prompt, b64);
+                if (outB64) loadFromBase64(outB64);
+            } catch (err) {
+                alert("生成に失敗しました。時間をおいて再試行してください。");
+            } finally {
+                hideStatus();
+                btn.disabled = false; btn.classList.remove('opacity-50');
+            }
+        }
+
+        document.getElementById('btn-ai-upscale').addEventListener('click', () => {
+            handleAIGeneration('btn-ai-upscale', "Enhance image quality, remove blur, remove noise, sharpen details, improve resolution.", "AI高画質化中...", "画質を改善しています (約10〜15秒)");
+        });
+
+        document.getElementById('btn-flat-color').addEventListener('click', () => {
+            handleAIGeneration('btn-flat-color', "Fix color inconsistency, flatten colors to look like high-quality anime cel shading. Keep original lines.", "AIフラット化中...", "色ムラをなくし、塗りを滑らかにしています...");
+        });
+
+        document.getElementById('btn-posterize').addEventListener('click', () => {
+            handleAIGeneration('btn-posterize', "Apply cel-shading style. Reduce the color palette to essential colors, creating a clean, poster-like anime look.", "AI色統一中...", "色数を減らしてアニメ調にまとめています...");
+        });
+
+        document.getElementById('btn-ai-line-art').addEventListener('click', () => {
+            const style = document.getElementById('ai-line-style-select').value;
+            let p = "Convert this image into a clean, high-quality professional line drawing with white background and black lines.";
+            if (style === 'blueprint') p = "Convert this image into a professional blueprint technical drawing with a deep blue background and precise white lines.";
+            if (style === 'technical') p = "Convert this image into an industrial technical drawing style. Sharp black lines on white background.";
+            if (style === 'pencil') p = "Convert this image into a detailed graphite pencil sketch.";
+            handleAIGeneration('btn-ai-line-art', p, "線図を生成中...", "AIが解析して描き直しています (約10秒)");
+        });
+
+        document.getElementById('btn-ai-generate').addEventListener('click', () => {
+            const p = document.getElementById('ai-prompt-input').value;
+            if(!p) return alert("指示を入力してください");
+            handleAIGeneration('btn-ai-generate', p, "AI処理中...", "AIが画像を編集しています");
+        });
+
+        // AI物体消去 (Inpaint)
+        document.getElementById('btn-enable-inpaint').addEventListener('click', () => {
+            isInpaintMode = true;
+            editorCanvas.style.cursor = 'crosshair';
+            document.getElementById('inpaint-instruction').classList.remove('hidden');
+            document.getElementById('btn-cancel-inpaint').classList.remove('hidden');
+            document.getElementById('btn-enable-inpaint').classList.add('hidden');
+            
+            editorCanvas.onmousedown = (e) => {
+                const r = editorCanvas.getBoundingClientRect();
+                imgDisplayScale = editorCanvas.width / r.width;
+                startPoint = { x: (e.clientX - r.left) * imgDisplayScale, y: (e.clientY - r.top) * imgDisplayScale };
+                isDrawingRect = true;
+            };
+            editorCanvas.onmousemove = (e) => {
+                if (!isDrawingRect) return;
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = editorCanvas.width; tempCanvas.height = editorCanvas.height;
+                // Since we don't store currentImageMat anymore, we need an original reference for the frame. 
+                // A better approach is to redraw from an offscreen canvas, but for simplicity we skip live preview 
+                // and just rely on the final mouseup. For live preview, we'd need to cache the canvas state on mousedown.
+            };
+            editorCanvas.onmouseup = (e) => {
+                isDrawingRect = false;
+                const r = editorCanvas.getBoundingClientRect();
+                const endX = (e.clientX - r.left) * imgDisplayScale, endY = (e.clientY - r.top) * imgDisplayScale;
+                const x = Math.min(startPoint.x, endX), y = Math.min(startPoint.y, endY);
+                const w = Math.abs(endX - startPoint.x), h = Math.abs(endY - startPoint.y);
+                
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = editorCanvas.width; tempCanvas.height = editorCanvas.height;
+                const tCtx = tempCanvas.getContext('2d');
+                tCtx.drawImage(editorCanvas, 0, 0);
+                tCtx.fillStyle = '#FF0000';
+                tCtx.fillRect(x, y, w, h);
+                
+                const b64 = tempCanvas.toDataURL('image/png').split(',')[1];
+                const p = "The red rectangle area in this image is a mask indicating an object to remove. Please replace the red area naturally. The final image should look clean without the red mask.";
+                handleAIGeneration('btn-enable-inpaint', p, "AI物体消去中...", "選択範囲を背景で補完しています...");
+                
+                endInpaintMode();
+            };
+        });
+
+        function endInpaintMode() {
+            isInpaintMode = false;
+            editorCanvas.style.cursor = 'default';
+            editorCanvas.onmousedown = editorCanvas.onmousemove = editorCanvas.onmouseup = null;
+            document.getElementById('inpaint-instruction').classList.add('hidden');
+            document.getElementById('btn-cancel-inpaint').classList.add('hidden');
+            document.getElementById('btn-enable-inpaint').classList.remove('hidden');
+        }
+        document.getElementById('btn-cancel-inpaint').addEventListener('click', endInpaintMode);
+
+        // ================= SVG =================
+        document.getElementById('svg-colors').addEventListener('input', (e) => document.getElementById('svg-colors-val').innerText = e.target.value);
+        document.getElementById('btn-make-svg').addEventListener('click', () => {
+            showStatus("ベクター変換中...", "パスを計算しています");
+            setTimeout(() => {
+                try {
+                    const imgData = ctx.getImageData(0, 0, editorCanvas.width, editorCanvas.height);
+                    const options = { numberofcolors: parseInt(document.getElementById('svg-colors').value), scale: 1, simplification: 1, moretracing: true };
+                    const svgString = ImageTracer.imagedataToSVG(imgData, options);
+                    
+                    document.getElementById('svg-result-area').classList.remove('hidden');
+                    document.getElementById('svg-code-output').value = svgString.substring(0, 300) + "... (省略)";
+                    
+                    const oldBtn = document.getElementById('btn-download-svg');
+                    const newBtn = oldBtn.cloneNode(true);
+                    oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+                    newBtn.addEventListener('click', () => {
+                        const blob = new Blob([svgString], {type: "image/svg+xml;charset=utf-8"});
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `vector_${Date.now()}.svg`;
+                        link.click();
+                    });
+                } catch(e) { alert("変換エラー"); }
+                hideStatus();
+            }, 50);
+        });
+
+        document.getElementById('image-upload-input').addEventListener('change', (e) => loadImage(e.target.files[0]));
+        document.getElementById('initial-image-input').addEventListener('change', (e) => loadImage(e.target.files[0]));
+
+    </script>
+</body>
+</html>
