@@ -6,43 +6,65 @@
     <title>シンプル写真加工アプリ - OpenCV不要版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/imagetracerjs@1.2.6/imagetracer_v1.2.6.min.js"></script>
-    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+        
+        :root {
+            --primary: #6366f1;
+            --secondary: #ec4899;
+            --bg-dark: #0f172a;
+            --card-glass: rgba(30, 41, 59, 0.7);
+            --border-glass: rgba(255, 255, 255, 0.1);
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.15) 0px, transparent 50%);
+            color: #f8fafc;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
+            overflow-x: hidden;
         }
+
         #app-container {
             width: 100%;
-            max-width: 1200px;
+            max-width: 1300px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            padding: 10px;
+            gap: 24px;
+            padding: 24px;
+            animation: fadeIn 0.8s ease-out;
         }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         @media (min-width: 1024px) {
             #app-container {
                 flex-direction: row;
-                align-items: flex-start;
+                align-items: stretch;
             }
         }
         
         #editor-canvas-wrapper {
             position: relative;
             flex-grow: 1;
-            background-color: #000;
-            border-radius: 12px;
+            background-color: #020617;
+            border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-            aspect-ratio: 16 / 9;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-glass);
             display: flex;
             justify-content: center;
             align-items: center;
+            transition: all 0.3s ease;
         }
         
         #editor-canvas {
@@ -51,14 +73,70 @@
             max-height: 100%;
             width: auto;
             height: auto;
-            background-color: #333;
-            cursor: default;
+            cursor: crosshair;
         }
         
+        .control-panel {
+            background: var(--card-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 24px;
+            border-radius: 20px;
+            border: 1px solid var(--border-glass);
+            width: 100%;
+            lg-width: 380px;
+            overflow-y: auto;
+            max-height: 90vh;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .premium-button {
+            position: relative;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            cursor: pointer;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+        }
+        .premium-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(99, 102, 241, 0.4);
+            filter: brightness(1.1);
+        }
+        .premium-button:active {
+            transform: translateY(0);
+        }
+
+        .tab-button {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #94a3b8;
+            transition: all 0.2s;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .tab-button.active {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: inset 0 0 0 1px var(--border-glass);
+        }
+        .tab-button:hover:not(.active) {
+            color: #cbd5e1;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
         .overlay-message {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(2, 6, 17, 0.9);
+            backdrop-filter: blur(8px);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -68,47 +146,6 @@
             text-align: center;
         }
 
-        .control-panel {
-            background: #1e1e1e;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid #333;
-            min-width: 300px;
-            overflow-y: auto;
-            max-height: 90vh;
-        }
-        
-        .tab-button {
-            padding: 10px 15px;
-            border-radius: 8px 8px 0 0;
-            border-bottom: 3px solid transparent;
-            font-weight: bold;
-            color: #999;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-        .tab-button.active {
-            color: #3b82f6;
-            border-color: #3b82f6;
-            background-color: #2a2a2a;
-        }
-        .tab-button:hover:not(.active) {
-            color: #bbb;
-            background-color: #222;
-        }
-        .tab-content {
-            display: none;
-            padding-top: 15px;
-            border-top: 1px solid #333;
-        }
-        .tab-content.active {
-            display: block;
-        }
-
-        @keyframes flash-animation {
-            0% { opacity: 1; }
-            100% { opacity: 0; }
-        }
         .flash-overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -117,30 +154,35 @@
             pointer-events: none;
             z-index: 60;
         }
-        .flash-active {
-            animation: flash-animation 0.5s ease-out;
+        @keyframes flashEffect {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
         }
+        .flash-active { animation: flashEffect 0.5s ease-out; }
         
-        .radio-group input[type="radio"] {
-            display: none;
-        }
+        .radio-group input[type="radio"] { display: none; }
         .radio-group label {
             display: inline-block;
             cursor: pointer;
-            padding: 6px 12px;
-            border: 1px solid #444;
-            border-radius: 4px;
+            padding: 8px 12px;
+            border: 1px solid var(--border-glass);
+            border-radius: 8px;
             font-size: 0.75rem;
-            color: #ccc;
+            color: #94a3b8;
             transition: all 0.2s;
             text-align: center;
             flex: 1;
         }
         .radio-group input[type="radio"]:checked + label {
-            background-color: #ec4899;
+            background-color: var(--secondary);
             color: white;
-            border-color: #ec4899;
+            border-color: var(--secondary);
         }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
     </style>
 </head>
 <body class="p-4">
@@ -172,17 +214,24 @@
             </div>
         </div>
 
-        <div class="control-panel w-full lg:w-80">
-            <h2 class="text-xl font-bold mb-4 text-white border-b border-gray-700 pb-3">🎨 写真加工 & アート</h2>
+        <div class="control-panel lg:w-[400px]">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-pink-500 flex items-center justify-center shadow-lg">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                </div>
+                <h2 class="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                    Linklabo AI
+                </h2>
+            </div>
 
-            <div class="flex border-b border-gray-700 mb-4 overflow-x-auto">
-                <button class="tab-button active flex-shrink-0" data-tab="upload">ファイル</button>
-                <button class="tab-button flex-shrink-0" data-tab="bg-remove">切り抜き</button>
-                <button class="tab-button flex-shrink-0" data-tab="adjustments">画像加工</button>
-                <button class="tab-button flex-shrink-0" data-tab="dither">ディザリング</button>
-                <button class="tab-button flex-shrink-0" data-tab="ai-line-art">AI線図</button>
-                <button class="tab-button flex-shrink-0" data-tab="filters">フィルタ</button>
-                <button class="tab-button flex-shrink-0" data-tab="ai-edit">AI加工</button>
+            <div class="flex gap-1 bg-white/5 p-1 rounded-14 mb-6 overflow-x-auto no-scrollbar">
+                <button class="tab-button active" data-tab="upload">ファイル</button>
+                <button class="tab-button" data-tab="bg-remove">切り抜き</button>
+                <button class="tab-button" data-tab="adjustments">画像加工</button>
+                <button class="tab-button" data-tab="dither">ディザ</button>
+                <button class="tab-button" data-tab="ai-line-art">AI線図</button>
+                <button class="tab-button" data-tab="filters">フィルタ</button>
+                <button class="tab-button" data-tab="ai-edit">AI加工</button>
             </div>
 
             <div id="tab-upload" class="tab-content active space-y-5">
@@ -190,8 +239,9 @@
                     <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">画像を読み込む</label>
                     <input type="file" id="image-upload-input" accept="image/*" class="block w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer border border-gray-700 rounded bg-gray-800">
                 </div>
-                <div class="mt-6 bg-gray-800 p-4 rounded border border-gray-700 text-center">
-                    <button id="btn-save-image" type="button" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded shadow-lg transition flex items-center justify-center gap-2">
+                <div class="mt-6 bg-white/5 p-4 rounded-xl border border-white/10 text-center">
+                    <button id="btn-save-image" type="button" class="w-full premium-button flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                         画像を保存 (PNG)
                     </button>
                 </div>
@@ -320,7 +370,7 @@
                             <label for="dither-transparent-check" class="text-[11px] text-gray-300 cursor-pointer select-none">白色部分を透過する</label>
                         </div>
                     </div>
-                    <button id="btn-apply-dither" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 px-4 rounded mt-2 transition shadow-lg">ディザリングを実行</button>
+                    <button id="btn-apply-dither" class="w-full premium-button mt-4">ディザリングを実行</button>
                 </div>
 
                 <div class="mt-4 border-t border-gray-700 pt-4">
@@ -357,7 +407,10 @@
                             </select>
                         </div>
                     </div>
-                    <button id="btn-ai-line-art" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-4 rounded mt-4 transition shadow-lg">AIで線図に変換</button>
+                    <button id="btn-ai-line-art" class="w-full premium-button mt-4 flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                        AIで線図に変換
+                    </button>
                     <p id="ai-line-error-msg" class="text-red-400 text-xs mt-2 hidden"></p>
                 </div>
             </div>
@@ -383,7 +436,10 @@
                 <div>
                     <h3 class="text-md font-bold text-white mb-2 text-purple-400">AIで自由に編集</h3>
                     <textarea id="ai-prompt-input" rows="3" class="w-full bg-gray-800 text-white text-sm border border-gray-600 rounded p-3 mb-3" placeholder="指示を入力..."></textarea>
-                    <button id="btn-ai-generate" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-4 rounded shadow-lg transition">AIにお願いする</button>
+                    <button id="btn-ai-generate" class="w-full premium-button flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        AIにお願いする
+                    </button>
                 </div>
             </div>
 
