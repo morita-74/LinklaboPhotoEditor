@@ -6,6 +6,7 @@
     <title>シンプル写真加工アプリ - OpenCV不要版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/imagetracerjs@1.2.6/imagetracer_v1.2.6.min.js"></script>
+    <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
         
         :root {
@@ -84,7 +85,6 @@
             border-radius: 20px;
             border: 1px solid var(--border-glass);
             width: 100%;
-            lg-width: 380px;
             overflow-y: auto;
             max-height: 90vh;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -182,17 +182,84 @@
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+        /* 比較スライダーのスタイル */
+        .comparison-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: none;
+            z-index: 40;
+        }
+        .comparison-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            overflow: hidden;
+        }
+        #before-canvas {
+            display: block;
+            width: auto; height: auto;
+            max-width: 100%; max-height: 100%;
+            filter: brightness(0.7);
+        }
+        .comparison-slider {
+            position: absolute;
+            top: 0; bottom: 0; width: 4px;
+            background: white;
+            cursor: ew-resize;
+            pointer-events: auto;
+            z-index: 45;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        .comparison-slider::after {
+            content: "↔";
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px; height: 40px;
+            background: white;
+            color: black;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .compare-label {
+            position: absolute;
+            top: 10px;
+            padding: 4px 12px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: white;
+            z-index: 46;
+        }
+        #before-label { left: 10px; }
+        #after-label { right: 10px; }
     </style>
 </head>
 <body class="p-4">
 
     <div id="app-container">
         <div class="flex-1 w-full">
-            <div id="editor-canvas-wrapper">
-                <canvas id="editor-canvas"></canvas>
-                <div id="flash-effect" class="flash-overlay"></div>
-                <div id="status-overlay" class="overlay-message hidden">
+                <div id="editor-canvas-wrapper">
+                    <canvas id="editor-canvas"></canvas>
+                    
+                    <!-- 比較スライダーコンポーネント -->
+                    <div id="comparison-container" class="comparison-container">
+                        <div id="before-label" class="compare-label">BEFORE</div>
+                        <div id="after-label" class="compare-label">AFTER</div>
+                        <div id="comparison-slider" class="comparison-slider"></div>
+                        <div id="comparison-overlay" class="comparison-overlay">
+                            <canvas id="before-canvas"></canvas>
+                        </div>
+                    </div>
+
+                    <div id="flash-effect" class="flash-overlay"></div>
+                    <div id="status-overlay" class="overlay-message hidden">
                     <div class="animate-spin rounded-full h-12 w-12 border-4 border-t-4 border-blue-500 border-gray-600 mb-4"></div>
                     <h3 class="text-xl font-bold text-white mb-2" id="status-title">処理中...</h3>
                     <p id="status-text" class="text-gray-400 text-sm">しばらくお待ちください</p>
@@ -245,8 +312,9 @@
                         画像を保存 (PNG)
                     </button>
                 </div>
-                <div class="pt-4 border-t border-gray-700">
-                    <button id="btn-undo" class="w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition">元の画像に戻す</button>
+                <div class="pt-4 border-t border-white/10 flex gap-2">
+                    <button id="btn-undo" class="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-xl transition">元の画像に戻す</button>
+                    <button id="btn-compare" class="flex-1 bg-indigo-600/30 hover:bg-indigo-600/50 text-white font-bold py-2 px-4 rounded-xl transition border border-indigo-500/30">比較</button>
                 </div>
             </div>
 
@@ -524,6 +592,53 @@
             link.download = `edited_${Date.now()}.png`;
             link.href = editorCanvas.toDataURL();
             link.click();
+        });
+
+        const comparisonContainer = document.getElementById('comparison-container');
+        const comparisonSlider = document.getElementById('comparison-slider');
+        const comparisonOverlay = document.getElementById('comparison-overlay');
+        const beforeCanvas = document.getElementById('before-canvas');
+        let isComparing = false;
+
+        document.getElementById('btn-compare').addEventListener('mousedown', () => {
+            if (!originalImage) return;
+            isComparing = true;
+            comparisonContainer.style.display = 'block';
+            
+            // BeforeCanvasをセットアップ
+            beforeCanvas.width = editorCanvas.width;
+            beforeCanvas.height = editorCanvas.height;
+            const bCtx = beforeCanvas.getContext('2d');
+            bCtx.drawImage(originalImage, 0, 0);
+            
+            updateSlider(50); // 初期位置 50%
+        });
+
+        const stopComparing = () => {
+            isComparing = false;
+            comparisonContainer.style.display = 'none';
+        };
+        document.getElementById('btn-compare').addEventListener('mouseup', stopComparing);
+        document.getElementById('btn-compare').addEventListener('mouseleave', stopComparing);
+
+        const updateSlider = (percent) => {
+            comparisonSlider.style.left = `${percent}%`;
+            comparisonOverlay.style.width = `${percent}%`;
+        };
+
+        comparisonSlider.addEventListener('mousedown', (e) => {
+            const move = (e) => {
+                const rect = editorCanvas.getBoundingClientRect();
+                let x = (e.clientX - rect.left) / rect.width * 100;
+                x = Math.max(0, Math.min(100, x));
+                updateSlider(x);
+            };
+            const up = () => {
+                window.removeEventListener('mousemove', move);
+                window.removeEventListener('mouseup', up);
+            };
+            window.addEventListener('mousemove', move);
+            window.addEventListener('mouseup', up);
         });
 
         document.getElementById('btn-undo').addEventListener('click', () => {
