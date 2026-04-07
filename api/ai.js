@@ -20,8 +20,8 @@ export default async function handler(req, res) {
     // クライアントからの指定があればそれを使用し、なければ用途に応じてモデルを選択
     // gemini-2.0-flash-exp はマルチモーダルに強いが、純粋な翻訳などは 1.5-flash が安定
     const isMultimodal = !!(req.body.image || req.body.mask || (req.body.contents && JSON.stringify(req.body.contents).includes("inlineData")));
-    // 試行錯誤に基づき、最も安定して動作するモデル名を指定
-    const requestedModel = req.body.model || (isMultimodal ? "gemini-2.0-flash-exp" : "gemini-1.5-flash-latest"); 
+    // 確実に動作が確認されているモデル名に統一
+    const requestedModel = req.body.model || "gemini-2.0-flash-exp"; 
     
     const model = genAI.getGenerativeModel({ model: requestedModel });
 
