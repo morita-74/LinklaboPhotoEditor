@@ -60,9 +60,9 @@
                 </select>
             </div>
             
-            <div class="p-2 text-indigo-300">
-                <i class="fas fa-arrows-alt-h"></i>
-            </div>
+            <button id="swapBtn" class="p-2 text-indigo-400 hover:text-indigo-600 border border-transparent hover:border-indigo-100 rounded-full transition-all active:rotate-180 duration-500">
+                <i class="fas fa-exchange-alt"></i>
+            </button>
 
             <div class="flex-1 text-right">
                 <label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">言語 B</label>
@@ -89,7 +89,12 @@
                     <button id="micBtn" class="w-16 h-16 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700 transition-all active:scale-95">
                         <i class="fas fa-microphone text-2xl"></i>
                     </button>
-                    <button id="translateBtn" class="bg-indigo-100 text-indigo-700 px-6 py-3 rounded-xl font-bold hover:bg-indigo-200 transition">翻訳</button>
+                    <button id="translateBtn" class="bg-indigo-100 text-indigo-700 px-6 py-3 rounded-xl font-bold hover:bg-indigo-200 transition flex items-center gap-2">
+                        <span id="translateBtnText">翻訳</span>
+                        <div id="loader" class="hidden">
+                            <i class="fas fa-spinner animate-spin"></i>
+                        </div>
+                    </button>
                 </div>
             </div>
 
@@ -165,9 +170,21 @@
             micBtnB: document.getElementById('micBtnB'),
             labelA: document.getElementById('labelA'), // Added missing element
             labelB: document.getElementById('labelB'), // Added missing element
+            translateBtn: document.getElementById('translateBtn'),
+            translateBtnText: document.getElementById('translateBtnText'),
+            loader: document.getElementById('loader'),
+            swapBtn: document.getElementById('swapBtn'),
             interimDisplay: document.getElementById('interimDisplay'),
             convInterim: document.getElementById('convInterim')
         };
+
+        function swapLanguages() {
+            const temp = els.langA.value;
+            els.langA.value = els.langB.value;
+            els.langB.value = temp;
+            updateConvLabels();
+            // Animation triggered by CSS already (active:rotate-180)
+        }
 
         // --- Speech Recognition ---
         function getRecognition(lang, onResult, onEnd) {
@@ -179,7 +196,11 @@
             rec.lang = lang;
             rec.onresult = onResult;
             rec.onend = onEnd;
-            rec.onerror = (e) => { console.error(e); stopAllRecording(); };
+            rec.onerror = (e) => { 
+                console.error(e); 
+                stopAllRecording(); 
+                if (e.error === 'not-allowed') showError("マイクの使用が許可されていません。");
+            };
             return rec;
         }
 
@@ -202,15 +223,15 @@
                 contents: [{ parts: [{ text: `Translate the following text to ${targetName} naturally. Return ONLY the translation. Text: ${text}` }] }]
             };
 
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 3; i++) {
                 try {
                     const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!res.ok) throw new Error();
                     const data = await res.json();
                     return data.candidates?.[0]?.content?.parts?.[0]?.text || "翻訳エラー";
                 } catch (e) {
-                    if (i === 4) throw e;
-                    await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000));
+                    if (i === 2) throw e;
+                    await new Promise(r => setTimeout(r, 1000));
                 }
             }
         }
@@ -219,17 +240,20 @@
         function appendChatMessage(original, translated, speaker) {
             const isA = speaker === 'A';
             const wrapper = document.createElement('div');
-            wrapper.className = `flex flex-col ${isA ? 'items-start' : 'items-end'} animate-fade-in`;
+            wrapper.className = `flex flex-col ${isA ? 'items-start' : 'items-end'} transition-all opacity-0 translate-y-2`;
             
             wrapper.innerHTML = `
                 <div class="max-w-[85%] rounded-2xl p-3 shadow-sm ${isA ? 'bg-indigo-600 text-white rounded-bl-none' : 'bg-white text-gray-800 rounded-br-none border border-gray-100'}">
-                    <p class="text-xs opacity-70 mb-1">${original}</p>
-                    <p class="font-medium text-lg">${translated}</p>
+                    <p class="text-[10px] opacity-70 mb-1">${original}</p>
+                    <p class="font-medium text-lg leading-tight">${translated}</p>
                 </div>
             `;
             
             if (els.chatHistory.querySelector('.text-center')) els.chatHistory.innerHTML = '';
             els.chatHistory.appendChild(wrapper);
+            requestAnimationFrame(() => {
+                wrapper.classList.remove('opacity-0', 'translate-y-2');
+            });
             els.chatHistory.scrollTop = els.chatHistory.scrollHeight;
         }
 
@@ -295,7 +319,6 @@
             try {
                 const result = await translate(text, from, to);
                 appendChatMessage(text, result, speaker);
-                // speak(result, to); // 自動読み上げを停止
                 saveToHistory(text, result, from, to);
             } catch (e) {
                 showError("翻訳に失敗しました。");
@@ -313,7 +336,10 @@
                     els.interimDisplay.textContent = res;
                     if (e.results[0].isFinal) els.inputText.value = res;
                 },
-                () => { stopAllRecording(); handleStandardTranslate(); }
+                () => { 
+                    stopAllRecording(); 
+                    if (els.inputText.value.trim()) handleStandardTranslate(); 
+                }
             );
             if (state.recognition) {
                 state.isRecording = true;
@@ -324,15 +350,27 @@
 
         async function handleStandardTranslate() {
             const text = els.inputText.value.trim();
-            if (!text) return;
+            if (!text || state.isTranslating) return;
+
+            state.isTranslating = true;
+            els.translateBtn.disabled = true;
+            els.translateBtnText.textContent = "翻訳中";
+            els.loader.classList.remove('hidden');
+
             try {
                 const res = await translate(text, els.langA.value, els.langB.value);
                 els.outputText.textContent = res;
                 els.resultCard.classList.remove('hidden');
-                // speak(res, els.langB.value); // 自動読み上げを停止
                 saveToHistory(text, res, els.langA.value, els.langB.value);
                 els.inputText.value = '';
-            } catch (e) { showError("エラー"); }
+            } catch (e) { 
+                showError("翻訳エラーが発生しました。"); 
+            } finally {
+                state.isTranslating = false;
+                els.translateBtn.disabled = false;
+                els.translateBtnText.textContent = "翻訳";
+                els.loader.classList.add('hidden');
+            }
         }
 
         function saveToHistory(original, translated, from, to) {
@@ -347,9 +385,21 @@
             els.historyList.innerHTML = '';
             state.history.forEach(item => {
                 const div = document.createElement('div');
-                div.className = 'bg-white/50 p-4 rounded-xl border border-white/20 hover:bg-white transition cursor-pointer';
-                div.innerHTML = `<div class="text-sm line-clamp-1 font-medium">${item.original}</div><div class="text-indigo-600 text-sm font-bold line-clamp-1">${item.translated}</div>`;
-                div.onclick = () => { els.inputText.value = item.original; els.outputText.textContent = item.translated; els.resultCard.classList.remove('hidden'); };
+                div.className = 'bg-white shadow-sm p-4 rounded-xl border border-gray-100 hover:border-indigo-200 transition cursor-pointer group';
+                div.innerHTML = `
+                    <div class="text-xs text-gray-400 mb-1 flex justify-between">
+                        <span>記録</span>
+                        <i class="fas fa-history opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                    </div>
+                    <div class="text-sm line-clamp-1 text-gray-600 mb-1">${item.original}</div>
+                    <div class="text-indigo-600 text-sm font-bold line-clamp-2">${item.translated}</div>
+                `;
+                div.onclick = () => { 
+                    els.inputText.value = item.original; 
+                    els.outputText.textContent = item.translated; 
+                    els.resultCard.classList.remove('hidden'); 
+                    els.resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                };
                 els.historyList.appendChild(div);
             });
         }
@@ -366,7 +416,8 @@
         els.micBtn.onclick = startStandardVoice;
         els.micBtnA.onclick = () => startConversationVoice('A');
         els.micBtnB.onclick = () => startConversationVoice('B');
-        document.getElementById('translateBtn').onclick = handleStandardTranslate;
+        els.swapBtn.onclick = swapLanguages;
+        els.translateBtn.onclick = handleStandardTranslate;
         document.getElementById('clearHistory').onclick = () => { state.history = []; renderHistory(); };
         document.getElementById('speakBtn').onclick = () => speak(els.outputText.textContent, els.langB.value);
         els.langA.onchange = updateConvLabels;
