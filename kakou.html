@@ -1163,7 +1163,202 @@
             }, 50);
         });
 
-        // 背景削除 (簡易)
+        // --- 線の太さ調整 ---
+        const lineWeightSlider = document.getElementById('line-weight-slider');
+        lineWeightSlider.oninput = (e) => document.getElementById('line-weight-value').innerText = e.target.value;
+        document.getElementById('btn-thicken-line').onclick = () => applyMorphology('dilate', parseInt(lineWeightSlider.value));
+        document.getElementById('btn-thin-line').onclick = () => applyMorphology('erode', parseInt(lineWeightSlider.value));
+
+        function applyMorphology(type, strength) {
+            showStatus("調整中...", "計算しています");
+            setTimeout(() => {
+                const d = ctx.getImageData(0, 0, editorCanvas.width, editorCanvas.height);
+                const out = ctx.createImageData(d.width, d.height);
+                const w = d.width, h = d.height;
+                const data = d.data;
+                const outData = out.data;
+                
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        let best = type === 'dilate' ? 255 : 0;
+                        for (let ky = -strength; ky <= strength; ky++) {
+                            for (let kx = -strength; kx <= strength; kx++) {
+                                const ny = Math.max(0, Math.min(h - 1, y + ky));
+                                const nx = Math.max(0, Math.min(w - 1, x + kx));
+                                const val = data[(ny * w + nx) * 4];
+                                if (type === 'dilate') { if (val < best) best = val; } // Find darkest
+                                else { if (val > best) best = val; } // Find brightest
+                            }
+                        }
+                        const idx = (y * w + x) * 4;
+                        outData[idx] = outData[idx+1] = outData[idx+2] = best;
+                        outData[idx+3] = 255;
+                    }
+                }
+                ctx.putImageData(out, 0, 0); 
+                saveToHistory();
+                hideStatus();
+            }, 50);
+        }
+
+        // --- 明るさ・コントラスト ---
+        document.getElementById('adj-brightness').oninput = (e) => document.getElementById('adj-brightness-val').innerText = e.target.value;
+        document.getElementById('adj-contrast').oninput = (e) => document.getElementById('adj-contrast-val').innerText = e.target.value;
+        document.getElementById('btn-apply-bc').onclick = () => {
+            const b = parseInt(document.getElementById('adj-brightness').value);
+            const c = parseFloat(document.getElementById('adj-contrast').value);
+            showStatus("調整中...", "適用しています");
+            setTimeout(() => {
+                applyBrightnessContrast(b, c);
+                saveToHistory();
+                hideStatus();
+            }, 50);
+        };
+
+        function applyBrightnessContrast(brightness, contrast) {
+            const d = ctx.getImageData(0, 0, editorCanvas.width, editorCanvas.height);
+            for (let i = 0; i < d.data.length; i += 4) {
+                d.data[i] = ((d.data[i] - 128) * contrast + 128) + brightness;
+                d.data[i+1] = ((d.data[i+1] - 128) * contrast + 128) + brightness;
+                d.data[i+2] = ((d.data[i+2] - 128) * contrast + 128) + brightness;
+            }
+            ctx.putImageData(d, 0, 0);
+        }
+
+        // --- 回転・反転 ---
+        document.getElementById('btn-rotate-right').onclick = () => rotateCanvas(90);
+        document.getElementById('btn-rotate-left').onclick = () => rotateCanvas(-90);
+        document.getElementById('btn-flip-h').onclick = () => flipCanvas(true);
+        document.getElementById('btn-flip-v').onclick = () => flipCanvas(false);
+
+        function rotateCanvas(deg) {
+            const temp = document.createElement('canvas');
+            if (Math.abs(deg) === 90) { temp.width = editorCanvas.height; temp.height = editorCanvas.width; }
+            else { temp.width = editorCanvas.width; temp.height = editorCanvas.height; }
+            const tCtx = temp.getContext('2d');
+            tCtx.translate(temp.width / 2, temp.height / 2);
+            tCtx.rotate(deg * Math.PI / 180);
+            tCtx.drawImage(editorCanvas, -editorCanvas.width / 2, -editorCanvas.height / 2);
+            syncCanvasSize(temp.width, temp.height);
+            ctx.drawImage(temp, 0, 0);
+            saveToHistory();
+        }
+        function flipCanvas(h) {
+            const temp = document.createElement('canvas');
+            temp.width = editorCanvas.width; temp.height = editorCanvas.height;
+            const tCtx = temp.getContext('2d');
+            if (h) { tCtx.translate(temp.width, 0); tCtx.scale(-1, 1); }
+            else { tCtx.translate(0, temp.height); tCtx.scale(1, -1); }
+            tCtx.drawImage(editorCanvas, 0, 0);
+            ctx.drawImage(temp, 0, 0);
+            saveToHistory();
+        }
+
+        // --- ディザリング & ハーフトーン ---
+        document.getElementById('dither-contrast-slider').oninput = (e) => document.getElementById('dither-contrast-value').innerText = e.target.value;
+        document.getElementById('dot-size-slider').oninput = (e) => document.getElementById('dot-size-value').innerText = e.target.value;
+
+        document.getElementById('btn-apply-dither').onclick = () => {
+            showStatus("ディザ適用中...", "変換しています");
+            setTimeout(() => {
+                // シンプルな閾値処理
+                const d = ctx.getImageData(0,0,editorCanvas.width, editorCanvas.height);
+                for(let i=0; i<d.data.length; i+=4) {
+                    const g = (d.data[i]+d.data[i+1]+d.data[i+2])/3;
+                    const v = g > 128 ? 255 : 0;
+                    d.data[i]=d.data[i+1]=d.data[i+2]=v;
+                }
+                ctx.putImageData(d, 0, 0);
+                saveToHistory();
+                hideStatus();
+            }, 50);
+        };
+
+        document.getElementById('btn-apply-halftone').onclick = () => {
+            showStatus("ハーフトーン変換中...", "ドット化しています");
+            setTimeout(() => {
+                const dotSize = parseInt(document.getElementById('dot-size-slider').value);
+                const d = ctx.getImageData(0,0,editorCanvas.width, editorCanvas.height);
+                ctx.fillStyle = "white";
+                ctx.fillRect(0,0,editorCanvas.width, editorCanvas.height);
+                for(let y=0; y<editorCanvas.height; y+=dotSize) {
+                    for(let x=0; x<editorCanvas.width; x+=dotSize) {
+                        const i = (y * editorCanvas.width + x) * 4;
+                        const g = (d.data[i]+d.data[i+1]+d.data[i+2])/3;
+                        const r = (dotSize/2) * (1 - g/255);
+                        ctx.fillStyle = "black";
+                        ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+                    }
+                }
+                saveToHistory();
+                hideStatus();
+            }, 50);
+        };
+
+        // --- アートフィルタ ---
+        document.getElementById('btn-sketch-realistic').onclick = () => {
+            showStatus("スケッチ化中...", "芸術的に変換しています");
+            setTimeout(() => {
+                document.getElementById('btn-grayscale').click();
+                document.getElementById('btn-invert-bw').click();
+                ctx.globalAlpha = 0.5;
+                const d = ctx.getImageData(0,0,editorCanvas.width, editorCanvas.height);
+                ctx.putImageData(d, 0, 0);
+                ctx.globalAlpha = 1.0;
+                saveToHistory();
+                hideStatus();
+            }, 50);
+        };
+        document.getElementById('btn-sketch-comic').onclick = () => {
+             document.getElementById('btn-grayscale').click();
+             document.getElementById('btn-posterize').click();
+        };
+
+        // --- AI 連携共通処理 (容量制限対策付き) ---
+        async function handleAIGeneration(btnId, prompt, sTitle, sText, maskBase64 = null) {
+            showStatus(sTitle, sText);
+            document.getElementById('processing-status').innerText = "Status: AI Processing...";
+
+            try {
+                // Vercel 4.5MB制限対策: 送信前にリサイズ
+                const maxDim = 1024;
+                let finalBase64 = history[0].dataUrl;
+                
+                if (editorCanvas.width > maxDim || editorCanvas.height > maxDim) {
+                    const temp = document.createElement('canvas');
+                    const scale = maxDim / Math.max(editorCanvas.width, editorCanvas.height);
+                    temp.width = editorCanvas.width * scale; temp.height = editorCanvas.height * scale;
+                    temp.getContext('2d').drawImage(editorCanvas, 0, 0, temp.width, temp.height);
+                    finalBase64 = temp.toDataURL('image/jpeg', 0.8);
+                }
+
+                const res = await fetch('/api/ai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        prompt, 
+                        image: finalBase64.split(',')[1], 
+                        mask: maskBase64 
+                    })
+                });
+
+                if (!res.ok) throw new Error("Server Error (Probably body size limit or timeout)");
+                const data = await res.json();
+                if (data.image) {
+                    loadFromBase64(data.image);
+                    setTimeout(saveToHistory, 500);
+                } else if (data.error) {
+                    alert("AI Error: " + data.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("AI Error: " + err.message);
+            } finally {
+                hideStatus();
+            }
+        }
+
+        // --- 背景削除 (簡易) ---
         document.getElementById('btn-remove-bg').onclick = () => {
              showStatus("背景透過中...", "色を解析して透過しています");
              setTimeout(() => {
