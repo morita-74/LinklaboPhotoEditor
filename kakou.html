@@ -406,9 +406,7 @@
             </div>
 
             <div class="flex gap-1 bg-white/5 p-1 rounded-14 mb-6 overflow-x-auto no-scrollbar sticky-tabs">
-                <button class="tab-button" data-tab="all">すべて</button>
-                <button class="tab-button active" data-tab="recommended">✨ おすすめ</button>
-                <button class="tab-button" data-tab="upload">ファイル</button>
+                <button class="tab-button active" data-tab="upload">ファイル</button>
                 <button class="tab-button" data-tab="bg-remove">切り抜き/AI消去</button>
                 <button class="tab-button" data-tab="adjustments">加工/調整</button>
                 <button class="tab-button" data-tab="dither">ディザ</button>
@@ -1012,7 +1010,6 @@
         };
 
         // --- タブ切り替え ---
-        const tabContentsWrapper = document.getElementById('tab-contents-wrapper');
         document.querySelectorAll('.tab-button').forEach(btn => {
             btn.onclick = () => {
                 const target = btn.dataset.tab;
@@ -1023,25 +1020,10 @@
                 const contents = document.querySelectorAll('.tab-content');
                 const container = document.getElementById('control-panel-body');
                 
-                if (target === 'all') {
-                    container.classList.add('all-mode');
-                    contents.forEach(c => c.classList.remove('active'));
-                } else if (target === 'recommended') {
-                    // おすすめモード：特定の重要機能だけ表示
-                    container.classList.remove('all-mode');
-                    contents.forEach(c => c.classList.remove('active'));
-                    
-                    // おすすめとして表示したい特定のコンテンツ
-                    ['tab-upload', 'tab-bg-remove', 'tab-adjustments', 'tab-ai-edit'].forEach(id => {
-                        const el = document.getElementById(id);
-                        if (el) el.classList.add('active');
-                    });
-                } else {
-                    container.classList.remove('all-mode');
-                    contents.forEach(c => c.classList.remove('active'));
-                    const targetEl = document.getElementById(`tab-${target}`);
-                    if (targetEl) targetEl.classList.add('active');
-                }
+                container.classList.remove('all-mode');
+                contents.forEach(c => c.classList.remove('active'));
+                const targetEl = document.getElementById(`tab-${target}`);
+                if (targetEl) targetEl.classList.add('active');
                 
                 featureSearch.value = "";
             };
@@ -1183,14 +1165,18 @@
 
         // 背景削除 (簡易)
         document.getElementById('btn-remove-bg').onclick = () => {
-             const d = ctx.getImageData(0,0,editorCanvas.width, editorCanvas.height);
-             const target = (editorCanvas.height - 5) * editorCanvas.width * 4 + (editorCanvas.width/2) * 4;
-             const r0 = d.data[target], g0 = d.data[target+1], b0 = d.data[target+2];
-             for(let i=0; i<d.data.length; i+=4) {
-                 if(Math.abs(d.data[i]-r0)<40 && Math.abs(d.data[i+1]-g0)<40 && Math.abs(d.data[i+2]-b0)<40) d.data[i+3]=0;
-             }
-             ctx.putImageData(d, 0, 0);
-             saveToHistory();
+             showStatus("背景透過中...", "色を解析して透過しています");
+             setTimeout(() => {
+                 const d = ctx.getImageData(0,0,editorCanvas.width, editorCanvas.height);
+                 const target = (editorCanvas.height - 5) * editorCanvas.width * 4 + (editorCanvas.width/2) * 4;
+                 const r0 = d.data[target], g0 = d.data[target+1], b0 = d.data[target+2];
+                 for(let i=0; i<d.data.length; i+=4) {
+                     if(Math.abs(d.data[i]-r0)<40 && Math.abs(d.data[i+1]-g0)<40 && Math.abs(d.data[i+2]-b0)<40) d.data[i+3]=0;
+                 }
+                 ctx.putImageData(d, 0, 0);
+                 saveToHistory();
+                 hideStatus();
+             }, 50);
         };
 
         // --- 基本フィルタ ---
@@ -1213,10 +1199,10 @@
             saveToHistory();
         };
         
-        // 初期状態で「おすすめ」を表示
+        // 初期状態
         document.addEventListener('DOMContentLoaded', () => {
-            const recBtn = document.querySelector('.tab-button[data-tab="recommended"]');
-            if (recBtn) recBtn.click();
+            const defaultTab = document.querySelector('.tab-button[data-tab="upload"]');
+            if (defaultTab) defaultTab.click();
         });
     </script>
 </body>
