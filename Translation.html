@@ -230,14 +230,14 @@
                     if (!res.ok) {
                         const errMsg = data.details || data.error || "Internal Server Error";
                         showError(`通信エラー (${res.status}): ${errMsg}`);
-                        return "翻訳に失敗しました";
+                        return `翻訳失敗 (${res.status}): ${errMsg}`;
                     }
                     return data.text || data.candidates?.[0]?.content?.parts?.[0]?.text || "翻訳内容を取得できませんでした";
                 } catch (e) {
                     if (i === 2) {
                         console.error(e);
                         showError("通信に失敗しました。接続を確認してください。");
-                        return "翻訳エラー";
+                        return `通信エラー: ${e.message}`;
                     }
                     await new Promise(r => setTimeout(r, 1000));
                 }
