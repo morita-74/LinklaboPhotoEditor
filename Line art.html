@@ -227,7 +227,7 @@
             try {
                 if (base64Image) {
                     // Image-to-Image / Editing
-                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+                    const url = `/api/ai`;
                     const payload = {
                         contents: [{
                             parts: [
@@ -244,7 +244,7 @@
                     };
                 } else {
                     // Text-to-Image
-                    const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
+                    const url = `/api/ai`;
                     const payload = {
                         instances: { prompt: baseInstructions },
                         parameters: { sampleCount: 1 }

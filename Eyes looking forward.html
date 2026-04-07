@@ -34,7 +34,7 @@ export default function App() {
 
   const analyzeImage = async (base64Data) => {
     const apiKey = "";
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+    const url = `/api/ai`;
     
     const payload = {
       contents: [{
@@ -63,7 +63,7 @@ export default function App() {
 
     try {
       const apiKey = ""; 
-      const imagenUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
+      const imagenUrl = `/api/ai`;
 
       let analyzedFeatures = "";
       if (refImageBase64) {

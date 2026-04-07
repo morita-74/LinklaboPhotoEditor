@@ -231,7 +231,7 @@ export default function App() {
   };
 
   const callGeminiAPI = async (prompt, image = null, retryCount = 0) => {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+    const url = `/api/ai`;
     
     const parts = [{ text: prompt }];
     

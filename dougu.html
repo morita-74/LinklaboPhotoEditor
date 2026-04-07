@@ -82,7 +82,7 @@ export default function App() {
 {"club": "クラブの種類", "tool1": "道具1", "tool2": "道具2"}
 例: {"club": "写真部", "tool1": "アンティークなカメラ", "tool2": "フィルム"}`;
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+      const url = `/api/ai`;
       const payload = {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { responseMimeType: "application/json" }
@@ -139,7 +139,7 @@ export default function App() {
 
       let imageUrl = "";
       if (referenceImage) {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+        const url = `/api/ai`;
         const payload = {
           contents: [{
             parts: [
@@ -157,7 +157,7 @@ export default function App() {
         const base64 = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
         if (base64) imageUrl = `data:image/png;base64,${base64}`;
       } else {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
+        const url = `/api/ai`;
         const payload = {
           instances: { prompt: prompt },
           parameters: { sampleCount: 1 }

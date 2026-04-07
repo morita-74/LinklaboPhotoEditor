@@ -380,7 +380,7 @@ export default function App() {
     setResultImage(null);
 
     const apiKey = ""; // ランタイムで提供される
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+    const url = `/api/ai`;
 
     let prompt = `あなたはレーザー彫刻用データを作る画像職人AIです。
 入力として以下の画像を提供します。

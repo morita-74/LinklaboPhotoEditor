@@ -254,7 +254,7 @@
                 generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
             };
 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+            const url = `/api/ai`;
             const delays = [1000, 2000, 4000, 8000, 16000];
             let lastError;
 

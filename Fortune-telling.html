@@ -35,7 +35,7 @@ const App = () => {
 
   const callGeminiAPI = async (prompt, base64Data = null) => {
     const apiKey = "";
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+    const url = `/api/ai`;
     const currentDate = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
 
     const payload = {

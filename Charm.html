@@ -184,7 +184,7 @@ export default function App() {
       generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
     };
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+    const url = `/api/ai`;
 
     try {
       const promises = [0, 1, 2].map(async (i) => {
