@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>透かし彫りエディタ (Sukashi-Bori Editor)</title>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --panel-color: #2d2d2d;
+            --accent-color: #4a90e2;
+            --text-color: #e0e0e0;
+            --border-color: #444;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* サイドバー (ツールパネル) */
+        #sidebar {
+            width: 280px;
+            background-color: var(--panel-color);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            box-sizing: border-box;
+            gap: 16px;
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            margin: 0 0 10px 0;
+            color: #fff;
+        }
+
+        h2 {
+            font-size: 0.9rem;
+            margin: 0 0 8px 0;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-group {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.85rem;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin: 8px 0;
+            cursor: pointer;
+        }
+
+        input[type="number"] {
+            width: 60px;
+            background: #444;
+            border: 1px solid #555;
+            color: white;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        button {
+            background-color: #444;
+            color: white;
+            border: 1px solid #555;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.9rem;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        button:hover {
+            background-color: #555;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        button.primary {
+            background-color: var(--accent-color);
+            border-color: #357abd;
+        }
+
+        button.primary:hover {
+            background-color: #357abd;
+        }
+
+        button.secondary {
+            background-color: #e27d4a;
+            border-color: #b95d2f;
+        }
+
+        button.secondary:hover {
+            background-color: #c96b3b;
+        }
+
+        button.active {
+            background-color: var(--accent-color);
+            border-color: #357abd;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-row button {
+            margin-bottom: 0;
+        }
+
+        /* メインエリア (キャンバス) */
+        #workspace {
+            flex: 1;
+            position: relative;
+            background-color: #111;
+            overflow: hidden;
+            /* チェッカーボードパターン (透過確認用) */
+            background-image:
+                linear-gradient(45deg, #222 25%, transparent 25%),
+                linear-gradient(-45deg, #222 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #222 75%),
+                linear-gradient(-45deg, transparent 75%, #222 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            transition: box-shadow 0.2s;
+        }
+
+        /* ドラッグオーバー時の視覚効果 */
+        #workspace.drag-over {
+            box-shadow: inset 0 0 0 4px var(--accent-color);
+        }
+
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        /* 通知・ローディング表示 */
+        #status-bar {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .mode-indicator {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <aside id="sidebar">
+        <h1>Sukashi-Bori Editor</h1>
+
+        <div class="control-group">
+            <h2>ファイル</h2>
+            <input type="file" id="file-input" accept="image/*" style="display:none">
+            <button onclick="document.getElementById('file-input').click()">画像を読み込む</button>
+            <button onclick="downloadImage()" class="primary">PNGで保存 (透過)</button>
+            <button onclick="downloadSVG()" id="btn-svg" class="secondary">SVGで保存 (切断用)</button>
+        </div>
+
+        <div class="control-group">
+            <h2>編集モード</h2>
+            <div class="btn-row">
+                <button id="btn-mode-fill" class="active" onclick="setMode('fill')">領域透過</button>
+                <button id="btn-mode-brush" onclick="setMode('brush')">なぞり</button>
+            </div>
+            <div class="mode-indicator" id="mode-desc">クリックした同色領域を透過します</div>
+
+            <label for="tolerance">色の許容誤差 (0-100): <span id="val-tolerance">30</span></label>
+            <input type="range" id="tolerance" min="0" max="100" value="30" oninput="updateParams()">
+
+            <label for="brush-size">ブラシサイズ (px): <span id="val-brush">20</span></label>
+            <input type="range" id="brush-size" min="1" max="100" value="20" oninput="updateParams()">
+        </div>
+
+        <div class="control-group">
+            <h2>一括処理</h2>
+            <p style="font-size:0.8rem; color:#aaa;">Shift+クリックで複数箇所を選択</p>
+            <button id="btn-batch" onclick="executeBatch()" disabled>選択箇所をまとめて透過 (0)</button>
+        </div>
+
+        <div class="control-group">
+            <h2>AI 補助 (Gemini 2.5)</h2>
+            <button onclick="triggerGeminiAnalysis()">AIによる線補完・検出</button>
+            <p style="font-size:0.75rem; color:#888;">※ 選択範囲の中心付近をAIが解析し、微細な線を検出します(デモ機能)</p>
+        </div>
+
+        <div class="control-group">
+            <h2>操作</h2>
+            <div class="btn-row">
+                <button onclick="undo()">元に戻す</button>
+                <button onclick="redo()">やり直し</button>
+            </div>
+            <button onclick="resetZoom()">表示リセット</button>
+        </div>
+    </aside>
+
+    <main id="workspace">
+        <canvas id="display-canvas"></canvas>
+        <div id="status-bar">Ready</div>
+    </main>
+
+    <script>
+        /**
+         * 定数・状態管理
+         */
+        const CONFIG = {
+            maxHistory: 20,
+            zoomSensitivity: 0.001,
+            minScale: 0.1,
+            maxScale: 10
+        };
+
+        const state = {
+            mode: 'fill', // 'fill' | 'brush' | 'pan' (space key)
+            isDragging: false,
+            isDrawing: false,
+            startX: 0,
+            startY: 0,
+
+            // Viewport
+            scale: 1,
+            offsetX: 0,
+            offsetY: 0,
+
+            // Parameters
+            tolerance: 30, // Color distance threshold
+            brushSize: 20,
+
+            // Data
+            history: [],
+            historyIndex: -1,
+            batchPoints: [], // {x, y} for batch processing
+            originalImageData: null, // To store initial state for hole detection
+
+            // API Key (Mock for demo)
+            geminiApiKey: ""
+        };
+
+        // Canvas references
+        const workspace = document.getElementById('workspace');
+        const displayCanvas = document.getElementById('display-canvas');
+        const displayCtx = displayCanvas.getContext('2d');
+
+        // Offscreen canvas (holds the actual image data)
+        const offCanvas = document.createElement('canvas');
+        const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
+
+        // UI Elements
+        const statusEl = document.getElementById('status-bar');
+        const btnBatch = document.getElementById('btn-batch');
+
+        /**
+         * 初期化処理
+         */
+        function init() {
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // Mouse / Wheel Events
+            displayCanvas.addEventListener('mousedown', onMouseDown);
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+            displayCanvas.addEventListener('wheel', onWheel, { passive: false });
+
+            // Drag & Drop Events
+            workspace.addEventListener('dragover', handleDragOver);
+            workspace.addEventListener('dragleave', handleDragLeave);
+            workspace.addEventListener('drop', handleDrop);
+
+            // Keyboard Events
+            window.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') {
+                    displayCanvas.style.cursor = 'grab';
+                }
+            });
+            window.addEventListener('keyup', (e) => {
+                if (e.code === 'Space') {
+                    displayCanvas.style.cursor = 'crosshair';
+                }
+            });
+
+            // File Input
+            document.getElementById('file-input').addEventListener('change', handleFileSelect);
+
+            // Initial UI Update
+            updateParams();
+        }
+
+        function resizeCanvas() {
+            displayCanvas.width = workspace.clientWidth;
+            displayCanvas.height = workspace.clientHeight;
+            drawDisplay();
+        }
+
+        /**
+         * 画像読み込み処理 (共通)
+         */
+        function loadImageFromFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                showStatus('画像ファイルを指定してください');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Setup offscreen canvas
+                    offCanvas.width = img.width;
+                    offCanvas.height = img.height;
+                    offCtx.drawImage(img, 0, 0);
+
+                    // Reset Viewport to center image
+                    const scaleX = (displayCanvas.width - 40) / img.width;
+                    const scaleY = (displayCanvas.height - 40) / img.height;
+                    state.scale = Math.min(scaleX, scaleY, 1);
+                    state.offsetX = (displayCanvas.width - img.width * state.scale) / 2;
+                    state.offsetY = (displayCanvas.height - img.height * state.scale) / 2;
+
+                    // Clear history
+                    state.history = [];
+                    state.historyIndex = -1;
+
+                    // Save original image data for "Hole" detection
+                    state.originalImageData = offCtx.getImageData(0, 0, offCanvas.width, offCanvas.height);
+
+                    saveState(); // Initial state
+
+                    drawDisplay();
+                    showStatus('画像を読み込みました');
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ファイル選択ダイアログからのハンドラ
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            loadImageFromFile(file);
+        }
+
+        // ドラッグ＆ドロップ用ハンドラ
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'copy';
+            workspace.classList.add('drag-over');
+            showStatus('画像をドロップしてください');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            workspace.classList.remove('drag-over');
+            statusEl.style.opacity = 0;
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            workspace.classList.remove('drag-over');
+
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                loadImageFromFile(e.dataTransfer.files[0]);
+            }
+        }
+
+        /**
+         * 描画ループ (Display Canvas)
+         */
+        function drawDisplay() {
+            // Clear Display
+            displayCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
+
+            if (offCanvas.width === 0) return;
+
+            displayCtx.save();
+
+            // Apply Transforms (Zoom/Pan)
+            displayCtx.translate(state.offsetX, state.offsetY);
+            displayCtx.scale(state.scale, state.scale);
+
+            // Draw the image
+            // Note: Rendering smoothed image for display, but editing is pixel-perfect
+            displayCtx.imageSmoothingEnabled = false;
+            displayCtx.drawImage(offCanvas, 0, 0);
+
+            // Draw Batch Selection Points
+            if (state.batchPoints.length > 0) {
+                displayCtx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+                displayCtx.strokeStyle = 'white';
+                displayCtx.lineWidth = 2 / state.scale;
+
+                state.batchPoints.forEach(p => {
+                    displayCtx.beginPath();
+                    displayCtx.arc(p.x, p.y, 5 / state.scale, 0, Math.PI * 2);
+                    displayCtx.fill();
+                    displayCtx.stroke();
+                });
+            }
+
+            displayCtx.restore();
+        }
+
+        /**
+         * イベントハンドラ: マウス操作
+         */
+        function onMouseDown(e) {
+            if (offCanvas.width === 0) return;
+
+            const { x, y } = getCanvasCoordinates(e);
+            const isSpacePressed = e.code === 'Space' || e.buttons === 4; // Middle click
+
+            if (isSpacePressed) {
+                state.isDragging = true;
+                state.startX = e.clientX;
+                state.startY = e.clientY;
+                displayCanvas.style.cursor = 'grabbing';
+                return;
+            }
+
+            // Tools
+            if (state.mode === 'fill') {
+                if (e.shiftKey) {
+                    // Batch Mode: Add point
+                    state.batchPoints.push({ x: Math.floor(x), y: Math.floor(y) });
+                    btnBatch.textContent = `選択箇所をまとめて透過 (${state.batchPoints.length})`;
+                    btnBatch.disabled = false;
+                    drawDisplay();
+                } else {
+                    // Instant Fill
+                    floodFill(Math.floor(x), Math.floor(y));
+                    saveState();
+                }
+            } else if (state.mode === 'brush') {
+                state.isDrawing = true;
+                brushErase(x, y); // Initial dot
+            }
+        }
+
+        function onMouseMove(e) {
+            if (state.isDragging) {
+                const dx = e.clientX - state.startX;
+                const dy = e.clientY - state.startY;
+                state.offsetX += dx;
+                state.offsetY += dy;
+                state.startX = e.clientX;
+                state.startY = e.clientY;
+                drawDisplay();
+            } else if (state.isDrawing && state.mode === 'brush') {
+                const { x, y } = getCanvasCoordinates(e);
+                brushErase(x, y);
+            }
+        }
+
+        function onMouseUp(e) {
+            if (state.isDragging) {
+                state.isDragging = false;
+                displayCanvas.style.cursor = 'crosshair';
+            }
+            if (state.isDrawing) {
+                state.isDrawing = false;
+                saveState(); // Save after stroke finishes
+            }
+        }
+
+        function onWheel(e) {
+            e.preventDefault();
+            const zoomFactor = 1 - e.deltaY * CONFIG.zoomSensitivity;
+            const newScale = Math.min(Math.max(state.scale * zoomFactor, CONFIG.minScale), CONFIG.maxScale);
+
+            // Zoom towards mouse pointer
+            const rect = displayCanvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Calculate offset adjustment to keep mouse point stationary
+            state.offsetX = mouseX - (mouseX - state.offsetX) * (newScale / state.scale);
+            state.offsetY = mouseY - (mouseY - state.offsetY) * (newScale / state.scale);
+            state.scale = newScale;
+
+            drawDisplay();
+        }
+
+        /**
+         * 座標変換 (Screen -> Image Local)
+         */
+        function getCanvasCoordinates(e) {
+            const rect = displayCanvas.getBoundingClientRect();
+            const clientX = e.clientX - rect.left;
+            const clientY = e.clientY - rect.top;
+
+            return {
+                x: (clientX - state.offsetX) / state.scale,
+                y: (clientY - state.offsetY) / state.scale
+            };
+        }
+
+        /**
+         * ツール機能: Flood Fill (領域透過)
+         * キューを使用した4方向探索アルゴリズム
+         */
+        function floodFill(startX, startY) {
+            const width = offCanvas.width;
+            const height = offCanvas.height;
+
+            // Boundary check
+            if (startX < 0 || startY < 0 || startX >= width || startY >= height) return;
+
+            const imageData = offCtx.getImageData(0, 0, width, height);
+            const data = imageData.data;
+            const tolerance = state.tolerance; // 0-100 (percentage roughly)
+            const threshold = (tolerance / 100) * 442; // Max Euclid distance is sqrt(255^2*3) approx 442
+
+            // Get target color
+            const startPos = (startY * width + startX) * 4;
+            const startR = data[startPos];
+            const startG = data[startPos + 1];
+            const startB = data[startPos + 2];
+            const startA = data[startPos + 3];
+
+            if (startA === 0) return; // Already transparent
+
+            const visited = new Uint8Array(width * height); // 0: unvisited, 1: visited
+            const queue = [startX, startY];
+
+            while (queue.length > 0) {
+                const y = queue.pop();
+                const x = queue.pop();
+
+                const pos = (y * width + x) * 4;
+
+                // Skip if already visited (though logic below helps prevent re-queueing)
+                if (visited[y * width + x]) continue;
+                visited[y * width + x] = 1;
+
+                // Color diff check
+                const r = data[pos];
+                const g = data[pos + 1];
+                const b = data[pos + 2];
+                const a = data[pos + 3];
+
+                // Euclidean distance
+                const dist = Math.sqrt(
+                    (r - startR) ** 2 +
+                    (g - startG) ** 2 +
+                    (b - startB) ** 2
+                );
+
+                if (dist <= threshold && a !== 0) {
+                    // Make transparent
+                    data[pos + 3] = 0;
+
+                    // Add neighbors
+                    if (x > 0 && !visited[y * width + (x - 1)]) { queue.push(x - 1, y); }
+                    if (x < width - 1 && !visited[y * width + (x + 1)]) { queue.push(x, y + 1); }
+                    if (y > 0 && !visited[(y - 1) * width + x]) { queue.push(x, y - 1); }
+                    if (y < height - 1 && !visited[(y + 1) * width + x]) { queue.push(x, y + 1); }
+                }
+            }
+
+            offCtx.putImageData(imageData, 0, 0);
+            drawDisplay();
+        }
+
+        /**
+         * ツール機能: ブラシ透過 (なぞり)
+         * Destination-out 合成モードを使用してアルファチャンネルを削る
+         */
+        function brushErase(x, y) {
+            offCtx.save();
+            offCtx.globalCompositeOperation = 'destination-out';
+            offCtx.beginPath();
+            offCtx.arc(x, y, state.brushSize / 2, 0, Math.PI * 2);
+            offCtx.fillStyle = 'rgba(0,0,0,1)';
+            offCtx.fill();
+            offCtx.restore();
+            drawDisplay();
+        }
+
+        /**
+         * バッチ処理
+         */
+        function executeBatch() {
+            if (state.batchPoints.length === 0) return;
+
+            showStatus('一括処理中...');
+
+            // Process all points without saving state in between
+            setTimeout(() => {
+                state.batchPoints.forEach(p => {
+                    floodFill(p.x, p.y);
+                });
+
+                state.batchPoints = [];
+                btnBatch.textContent = '選択箇所をまとめて透過 (0)';
+                btnBatch.disabled = true;
+
+                saveState();
+                drawDisplay();
+                showStatus('処理完了');
+            }, 10); // Small delay to render UI
+        }
+
+        /**
+         * Undo / Redo System
+         */
+        function saveState() {
+            // If we are in the middle of history, discard future
+            if (state.historyIndex < state.history.length - 1) {
+                state.history = state.history.slice(0, state.historyIndex + 1);
+            }
+
+            // Save full image data (memory intensive but simple)
+            // Optimization: Could use tiles or differential storage for production
+            state.history.push(offCtx.getImageData(0, 0, offCanvas.width, offCanvas.height));
+
+            if (state.history.length > CONFIG.maxHistory) {
+                state.history.shift();
+            } else {
+                state.historyIndex++;
+            }
+        }
+
+        function undo() {
+            if (state.historyIndex > 0) {
+                state.historyIndex--;
+                const imageData = state.history[state.historyIndex];
+                offCtx.putImageData(imageData, 0, 0);
+                drawDisplay();
+                showStatus('Undo');
+            }
+        }
+
+        function redo() {
+            if (state.historyIndex < state.history.length - 1) {
+                state.historyIndex++;
+                const imageData = state.history[state.historyIndex];
+                offCtx.putImageData(imageData, 0, 0);
+                drawDisplay();
+                showStatus('Redo');
+            }
+        }
+
+        /**
+         * UIコントロール
+         */
+        function setMode(mode) {
+            state.mode = mode;
+
+            document.getElementById('btn-mode-fill').classList.toggle('active', mode === 'fill');
+            document.getElementById('btn-mode-brush').classList.toggle('active', mode === 'brush');
+
+            const desc = document.getElementById('mode-desc');
+            if (mode === 'fill') desc.textContent = "クリックした同色領域を透過します (Shift+クリックで複数選択)";
+            else desc.textContent = "ドラッグしてなぞった部分を透過します";
+        }
+
+        function updateParams() {
+            state.tolerance = parseInt(document.getElementById('tolerance').value);
+            state.brushSize = parseInt(document.getElementById('brush-size').value);
+
+            document.getElementById('val-tolerance').textContent = state.tolerance;
+            document.getElementById('val-brush').textContent = state.brushSize;
+        }
+
+        function resetZoom() {
+            if (offCanvas.width === 0) return;
+            const scaleX = (displayCanvas.width - 40) / offCanvas.width;
+            const scaleY = (displayCanvas.height - 40) / offCanvas.height;
+            state.scale = Math.min(scaleX, scaleY, 1);
+            state.offsetX = (displayCanvas.width - offCanvas.width * state.scale) / 2;
+            state.offsetY = (displayCanvas.height - offCanvas.height * state.scale) / 2;
+            drawDisplay();
+        }
+
+        function showStatus(msg) {
+            statusEl.textContent = msg;
+            statusEl.style.opacity = 1;
+            // メッセージがすぐ消えないように、明示的にクリアするまで残す場合もあるが
+            // ここでは単純な表示更新のみ
+        }
+
+        function clearStatus() {
+            statusEl.style.opacity = 0;
+        }
+
+        function downloadImage() {
+            if (offCanvas.width === 0) return;
+            const link = document.createElement('a');
+            link.download = 'sukashibori_edited.png';
+            link.href = offCanvas.toDataURL('image/png');
+            link.click();
+        }
+
+        /**
+         * SVGダウンロード機能 (フリーズ対策版)
+         * 非同期処理でUIスレッドをブロックしないように修正
+         */
+        async function downloadSVG() {
+            if (offCanvas.width === 0) return;
+            const btn = document.getElementById('btn-svg');
+            btn.disabled = true;
+            showStatus('SVG生成開始...');
+
+            // UI更新のために少し待つ
+            await new Promise(r => setTimeout(r, 50));
+
+            try {
+                const width = offCanvas.width;
+                const height = offCanvas.height;
+                const imageData = offCtx.getImageData(0, 0, width, height);
+                const data = imageData.data;
+
+                // オリジナルデータがない場合（予期せぬエラー）は現在データを使用（全透過をカット対象にする）
+                const originalData = state.originalImageData ? state.originalImageData.data : data;
+
+                const visited = new Uint8Array(width * height);
+
+                const svgParts = [];
+                svgParts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">`);
+
+                // 画像を埋め込む (Base64)
+                const base64Image = offCanvas.toDataURL('image/png');
+                svgParts.push(`<image href="${base64Image}" x="0" y="0" width="${width}" height="${height}" />`);
+
+                const ALPHA_THRESHOLD = 10;
+
+                // 「穴」判定：元々は不透明だったが、現在は透明になっているピクセル
+                // 元々透明だった場所はカットしない
+                function isHole(x, y) {
+                    if (x < 0 || x >= width || y < 0 || y >= height) return false;
+                    const idx = (y * width + x) * 4 + 3;
+                    // original > threshold AND current <= threshold
+                    return originalData[idx] > ALPHA_THRESHOLD && data[idx] <= ALPHA_THRESHOLD;
+                }
+
+                // 行ごとに処理し、適宜休憩を入れる
+                for (let y = 0; y < height; y++) {
+                    // 20行ごとにUIスレッドに制御を戻す & 進捗表示
+                    if (y % 20 === 0) {
+                        const progress = Math.round((y / height) * 100);
+                        showStatus(`SVG生成中... ${progress}%`);
+                        await new Promise(r => setTimeout(r, 0));
+                    }
+
+                    for (let x = 0; x < width; x++) {
+                        const idx = y * width + x;
+                        // 既に訪問済み、または「穴」でないならスキップ
+                        if (!isHole(x, y) || visited[idx]) continue;
+
+                        // 境界線判定 (穴の境界＝周囲に「穴じゃない」ピクセルがある)
+                        // isHoleは「透明な穴」なので、その外側は「不透明」か「元々透明」な場所
+                        let isBorder = !isHole(x - 1, y) || !isHole(x + 1, y) || !isHole(x, y - 1) || !isHole(x, y + 1);
+
+                        if (isBorder) {
+                            const contour = traceContour(x, y, width, height, isHole, visited);
+                            if (contour.length > 2) {
+                                const simplified = optimizePath(contour);
+
+                                let pathStr = `<path d="M ${simplified[0].x} ${simplified[0].y}`;
+                                for (let i = 1; i < simplified.length; i++) {
+                                    pathStr += ` L ${simplified[i].x} ${simplified[i].y}`;
+                                }
+                                // 塗りつぶしなし、赤ストロークでカットラインを表示
+                                pathStr += ` Z" fill="none" stroke="red" stroke-width="1" vector-effect="non-scaling-stroke" />`;
+                                svgParts.push(pathStr);
+                            }
+                        }
+                    }
+                }
+
+                svgParts.push('</svg>');
+
+                const blob = new Blob(svgParts, { type: 'image/svg+xml' });
+
+                // ファイル保存処理 (FileSystem Access API対応)
+                await saveFile(blob, 'sukashibori_cut.svg');
+
+                showStatus('SVG保存完了');
+                setTimeout(clearStatus, 3000);
+
+            } catch (e) {
+                console.error(e);
+                showStatus('SVG生成エラー: ' + e.message);
+                setTimeout(clearStatus, 5000);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        /**
+         * ファイル保存ヘルパー
+         * File System Access API が使える場合は使用し、使えない場合は従来のダウンロード
+         */
+        async function saveFile(blob, defaultName) {
+            try {
+                if (window.showSaveFilePicker) {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: defaultName,
+                        types: [{
+                            description: 'SVG File',
+                            accept: { 'image/svg+xml': ['.svg'] },
+                        }],
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    return;
+                }
+            } catch (err) {
+                // キャンセルされた場合やエラー時はフォールバックしない（ユーザーが明示的にキャンセルした可能性が高い）
+                if (err.name !== 'AbortError') {
+                    console.warn('File System Access API failed, falling back to download link.', err);
+                } else {
+                    return; // ユーザーキャンセル
+                }
+            }
+
+            // Fallback
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = defaultName;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        /**
+         * パス最適化
+         */
+        function optimizePath(points) {
+            if (points.length <= 2) return points;
+            const newPoints = [points[0]];
+            let lastDx = points[1].x - points[0].x;
+            let lastDy = points[1].y - points[0].y;
+
+            for (let i = 2; i < points.length; i++) {
+                const dx = points[i].x - points[i - 1].x;
+                const dy = points[i].y - points[i - 1].y;
+
+                if (dx !== lastDx || dy !== lastDy) {
+                    newPoints.push(points[i - 1]);
+                    lastDx = dx;
+                    lastDy = dy;
+                }
+            }
+            newPoints.push(points[points.length - 1]);
+            return newPoints;
+        }
+
+        // 輪郭追跡（フリーズ対策済）
+        // 輪郭追跡（Moore-Neighbor Tracing）
+        function traceContour(startX, startY, w, h, isOpaqueFunc, visitedArr) {
+            const clockwise = [
+                { x: 0, y: -1 }, { x: 1, y: -1 }, { x: 1, y: 0 }, { x: 1, y: 1 },
+                { x: 0, y: 1 }, { x: -1, y: 1 }, { x: -1, y: 0 }, { x: -1, y: -1 }
+            ];
+
+            const path = [];
+
+            // 開始点 (S)
+            let s = { x: startX, y: startY };
+
+            // 前の点 (B) - ここでは左隣から入ったと仮定して探索を開始する（標準的なスキャン順序なら妥当）
+            // 左(x-1)が透明でsが不透明だから境界になったはず
+            let b = { x: startX - 1, y: startY };
+
+            // 最初の有効な次の点を見つける
+            // Moore-neighbor tracing: Bから時計回りに探して最初に見つかった黒画素を次のSとする
+            // その際、最後に調べた白画素を次のBとする
+
+            let boundaryFound = false;
+            let initialS = s;
+            let initialB = b;
+
+            // ループ制限
+            const maxLoops = 20000;
+            let loopCount = 0;
+
+            // Jacob's stopping criterion: Stop when we enter the start pixel (s) from the same direction as initially
+            // Since implementing that strictly is complex, we'll maintain a path and stop when we return to start.
+
+            // ヘルパー: 方向インデックスを取得
+            function getDirIdx(from, to) {
+                const dx = to.x - from.x;
+                const dy = to.y - from.y;
+                for (let i = 0; i < 8; i++) {
+                    if (clockwise[i].x === dx && clockwise[i].y === dy) return i;
+                }
+                return -1; // Should not happen
+            }
+
+            let curr = s;
+            // 初期バックトラック方向 (curr -> b の方向の逆、つまり b -> curr の方向)
+            // ただし探索は b から時計回りに行うので、curr を中心に b の方向を特定する
+            let prev = b;
+
+            do {
+                // 現在点を保存
+                path.push({ x: curr.x, y: curr.y });
+
+                // 訪問済みマーク (塗りつぶしの内側を再スキャンしないように)
+                if (curr.x >= 0 && curr.x < w && curr.y >= 0 && curr.y < h) {
+                    visitedArr[curr.y * w + curr.x] = 1;
+                }
+
+                // 次の点を探す
+                let foundNext = false;
+
+                // currを中心として、prev の方向から時計回りに探索
+                let startDir = getDirIdx(curr, prev); // prevは探索開始点(白画素のはず)
+                if (startDir === -1) {
+                    // エラー回復: とりあえず上から
+                    startDir = 0;
+                }
+
+                for (let i = 0; i < 8; i++) {
+                    const idx = (startDir + i) % 8; // startDir(prev)も含めてチェックする（孤立点対策）
+                    const nx = curr.x + clockwise[idx].x;
+                    const ny = curr.y + clockwise[idx].y;
+
+                    if (isOpaqueFunc(nx, ny)) {
+                        // 黒画素発見 -> これが次の curr
+                        // その1つ手前(時計回り順で)が次の prev (白画素のはず)
+                        // (startDir + i) が黒だった。
+                        // 直前の白画素は (startDir + i - 1)
+
+                        // 修正: Moore algorithm では、"backtrack" update is crucial.
+                        // The new backtrack point is the neighbor visited just before the new boundary point.
+
+                        let backIdx = (startDir + i - 1 + 8) % 8;
+                        prev = { x: curr.x + clockwise[backIdx].x, y: curr.y + clockwise[backIdx].y };
+                        curr = { x: nx, y: ny };
+                        foundNext = true;
+                        break;
+                    }
+                }
+
+                loopCount++;
+                if (!foundNext || loopCount > maxLoops) {
+                    break;
+                }
+
+            } while ((curr.x !== startX || curr.y !== startY));
+
+            return path;
+        }
+
+        /**
+         * Gemini 2.5 連携 (Mock Implementation)
+         */
+        async function triggerGeminiAnalysis() {
+            if (offCanvas.width === 0) return;
+            showStatus('AI解析中... (Consoleを確認してください)');
+
+            const patchSize = 256;
+            const centerX = Math.floor((Math.abs(state.offsetX) + displayCanvas.width / 2) / state.scale);
+            const centerY = Math.floor((Math.abs(state.offsetY) + displayCanvas.height / 2) / state.scale);
+
+            const sx = Math.max(0, centerX - patchSize / 2);
+            const sy = Math.max(0, centerY - patchSize / 2);
+
+            const patchCanvas = document.createElement('canvas');
+            patchCanvas.width = patchSize;
+            patchCanvas.height = patchSize;
+            const patchCtx = patchCanvas.getContext('2d');
+
+            patchCtx.drawImage(offCanvas, sx, sy, patchSize, patchSize, 0, 0, patchSize, patchSize);
+
+            console.log("--- Gemini Analysis Start ---");
+            console.log(`Target Center: ${centerX}, ${centerY}`);
+
+            try {
+                await new Promise(r => setTimeout(r, 1500));
+
+                console.log("Gemini Response: [Simulated] 線形構造を検出しました。");
+
+                const originalStyle = displayCtx.strokeStyle;
+                displayCtx.strokeStyle = "cyan";
+                displayCtx.lineWidth = 3;
+                displayCtx.strokeRect(
+                    state.offsetX + sx * state.scale,
+                    state.offsetY + sy * state.scale,
+                    patchSize * state.scale,
+                    patchSize * state.scale
+                );
+                displayCtx.strokeStyle = originalStyle;
+
+                showStatus('AI解析完了: 線が強調されるべき領域を確認 (Demo)');
+                setTimeout(() => {
+                    drawDisplay();
+                    clearStatus();
+                }, 2000);
+
+            } catch (e) {
+                console.error(e);
+                showStatus('AI解析エラー');
+            }
+        }
+
+        // アプリケーション開始
+        init();
+
+    </script>
+</body>
+
+</html>

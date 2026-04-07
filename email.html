@@ -1,0 +1,383 @@
+import React, { useState, useRef } from 'react';
+import { Mail, Copy, CheckCircle2, AlertCircle, UploadCloud, Loader2, Send, MessageSquare, Package, Truck, AlertOctagon, MoreHorizontal, Smartphone, AtSign } from 'lucide-react';
+
+export default function App() {
+  const [media, setMedia] = useState('メール'); // 'メール' or 'DM'
+  const [category, setCategory] = useState('商品購入');
+  const [formData, setFormData] = useState({
+    customerName: '',
+    productName: '',
+    quantity: '',
+    orderNumber: '',
+    trackingNumber: '',
+  });
+  const [inputText, setInputText] = useState('');
+  const [generatedText, setGeneratedText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const categories = [
+    { id: '商品購入', icon: Package, label: '商品購入' },
+    { id: '商品送付', icon: Truck, label: '商品送付' },
+    { id: 'クレーム対応', icon: AlertOctagon, label: 'クレーム対応' },
+    { id: 'その他', icon: MoreHorizontal, label: 'その他' },
+  ];
+
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleCategoryChange = (catId) => {
+    setCategory(catId);
+    // カテゴリ変更時にフォームの一部をクリアするかは運用次第ですが、今回は保持します
+  };
+
+  const handleGenerate = async () => {
+    if (!inputText.trim() && !formData.customerName && !formData.productName) {
+      setError('お客様名や状況などの情報を入力してください。');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+    setGeneratedText('');
+
+    const apiKey = ""; // 実行環境で自動付与されます
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+    const systemPrompt = `あなたは「Linklabo」の優秀なカスタマーサポートAIです。
+以下の指示に従い、顧客への返信文章を作成してください。
+- 丁寧でプロフェッショナルなビジネス日本語を使用すること。
+- メールの場合は件名（件名：〜）と本文を出力してください。DMの場合は件名は不要です。
+- 提供された情報（お客様名、商品名、数量など）を文章に自然に組み込むこと。
+- Linklaboのブランドイメージを損なわない、誠実な対応を心がけること。`;
+
+    let userPrompt = `【送信媒体】: ${media}\n【カテゴリ】: ${category}\n\n`;
+    
+    if (formData.customerName) userPrompt += `【お客様名】: ${formData.customerName} 様\n`;
+    if (formData.productName) userPrompt += `【対象商品名】: ${formData.productName}\n`;
+    if (formData.quantity) userPrompt += `【数量】: ${formData.quantity}\n`;
+    if (formData.orderNumber) userPrompt += `【注文・予約番号】: ${formData.orderNumber}\n`;
+    if (formData.trackingNumber) userPrompt += `【配送業者・追跡番号】: ${formData.trackingNumber}\n`;
+    
+    userPrompt += `\n【状況・お客様からのコメント】:\n${inputText}\n\n`;
+    userPrompt += `上記の内容に基づいて、${media}用の適切な返信文を作成してください。\n`;
+
+    if (media === 'メール') {
+      userPrompt += `\n※メールの末尾には必ず以下の署名をそのまま挿入してください。
+--------------------------------------------------
+Linklabo カスタマーサポート
+公式サイト:https://linklabo-7bd28.web.app/
+Instagram：https://www.instagram.com/linklabo2026/
+お問い合わせ:linklabo2026@gmail.com
+--------------------------------------------------`;
+    }
+
+    const payload = {
+      contents: [{ parts: [{ text: userPrompt }] }],
+      systemInstruction: { parts: [{ text: systemPrompt }] }
+    };
+
+    const fetchWithRetry = async (retries = 5, delay = 1000) => {
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) throw new Error('APIリクエストに失敗しました');
+        
+        const data = await response.json();
+        if (data.candidates && data.candidates[0].content.parts[0].text) {
+          return data.candidates[0].content.parts[0].text;
+        } else {
+          throw new Error('予期せぬレスポンス形式です');
+        }
+      } catch (err) {
+        if (retries > 0) {
+          await new Promise(res => setTimeout(res, delay));
+          return fetchWithRetry(retries - 1, delay * 2);
+        }
+        throw err;
+      }
+    };
+
+    try {
+      const text = await fetchWithRetry();
+      setGeneratedText(text);
+    } catch (err) {
+      setError('AIによる生成に失敗しました。しばらく経ってから再度お試しください。');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCopy = () => {
+    if (!generatedText) return;
+    document.execCommand('copy');
+    navigator.clipboard.writeText(generatedText).catch(() => {
+      const textArea = document.createElement("textarea");
+      textArea.value = generatedText;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+    });
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const processFile = (file) => {
+    if (!file) return;
+    if (file.type === "text/plain" || file.name.endsWith('.txt') || file.name.endsWith('.csv') || file.name.endsWith('.md')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setInputText(prev => prev + (prev ? '\n\n' : '') + `[添付ファイル: ${file.name}]\n` + e.target.result);
+      };
+      reader.readAsText(file);
+    } else {
+      setInputText(prev => prev + (prev ? '\n' : '') + `[参考ファイル受領: ${file.name}]`);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) processFile(files[0]);
+  };
+
+  const handleFileSelect = (e) => {
+    const files = e.target.files;
+    if (files.length > 0) processFile(files[0]);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans sm:p-4 md:p-8">
+      <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 flex flex-col h-[calc(100vh-2rem)] md:h-auto md:min-h-[850px]">
+        
+        {/* Header */}
+        <header className="bg-blue-600 text-white p-6 flex items-center space-x-3 shrink-0">
+          <div className="bg-white p-2 rounded-lg">
+            <Mail className="w-6 h-6 text-blue-600" />
+          </div>
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight">Linklabo AI アシスタント</h1>
+            <p className="text-blue-100 text-sm md:text-base">メール・DM返信文の自動生成</p>
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col md:flex-row gap-6">
+          
+          {/* Left Column: Input */}
+          <div className="w-full md:w-1/2 flex flex-col space-y-6">
+            
+            {/* 1. 媒体の選択 */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">1. 送信媒体を選択</label>
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => setMedia('メール')}
+                  className={`flex-1 flex items-center justify-center p-3 rounded-xl border transition-all ${
+                    media === 'メール' ? 'border-blue-600 bg-blue-50 text-blue-700 font-bold' : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <AtSign className="w-5 h-5 mr-2" />
+                  メール (署名あり)
+                </button>
+                <button
+                  onClick={() => setMedia('DM')}
+                  className={`flex-1 flex items-center justify-center p-3 rounded-xl border transition-all ${
+                    media === 'DM' ? 'border-blue-600 bg-blue-50 text-blue-700 font-bold' : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <Smartphone className="w-5 h-5 mr-2" />
+                  Instagram DM等
+                </button>
+              </div>
+            </div>
+
+            {/* 2. カテゴリ Selection */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">2. 対応カテゴリ</label>
+              <div className="grid grid-cols-2 gap-2">
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => handleCategoryChange(cat.id)}
+                    className={`flex items-center p-3 rounded-xl border transition-all duration-200 ${
+                      category === cat.id
+                        ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
+                        : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <cat.icon className={`w-5 h-5 mr-2 ${category === cat.id ? 'text-blue-600' : 'text-slate-400'}`} />
+                    <span className="font-medium text-sm">{cat.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. アシスト入力フォーム */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <label className="block text-sm font-semibold text-slate-700 mb-3">3. 基本情報 (わかる範囲で入力)</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  name="customerName"
+                  value={formData.customerName}
+                  onChange={handleInputChange}
+                  placeholder="お客様のお名前 (例: 山田太郎)"
+                  className="w-full p-2.5 text-sm border border-slate-300 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+                <input
+                  type="text"
+                  name="productName"
+                  value={formData.productName}
+                  onChange={handleInputChange}
+                  placeholder="対象の商品名"
+                  className="w-full p-2.5 text-sm border border-slate-300 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+                {(category === '商品購入' || category === '商品送付' || category === 'クレーム対応') && (
+                  <input
+                    type="text"
+                    name="quantity"
+                    value={formData.quantity}
+                    onChange={handleInputChange}
+                    placeholder="数量 (例: 2個)"
+                    className="w-full p-2.5 text-sm border border-slate-300 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                )}
+                {(category === '商品購入' || category === '商品送付') && (
+                  <input
+                    type="text"
+                    name="orderNumber"
+                    value={formData.orderNumber}
+                    onChange={handleInputChange}
+                    placeholder="注文番号 (任意)"
+                    className="w-full p-2.5 text-sm border border-slate-300 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                )}
+                {(category === '商品送付') && (
+                  <input
+                    type="text"
+                    name="trackingNumber"
+                    value={formData.trackingNumber}
+                    onChange={handleInputChange}
+                    placeholder="配送業者・追跡番号"
+                    className="w-full p-2.5 text-sm border border-slate-300 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 md:col-span-2"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* 4. 詳細状況・コメント */}
+            <div className="flex-1 flex flex-col min-h-[150px]">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                4. 状況・コメント（AIへの指示や受信内容）
+              </label>
+              
+              <div 
+                className={`relative flex-1 border-2 rounded-xl transition-all duration-200 overflow-hidden ${
+                  isDragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-white'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <textarea
+                  className="w-full h-full p-3 text-sm resize-none outline-none bg-transparent"
+                  placeholder="お客様からのメッセージ内容や、「お詫びして交換を提案する」などのAIへの指示を入力してください。ファイルをドロップして読み込むことも可能です。"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                />
+                {isDragging && (
+                  <div className="absolute inset-0 bg-blue-500/10 flex flex-col items-center justify-center pointer-events-none backdrop-blur-[1px]">
+                    <UploadCloud className="w-10 h-10 text-blue-600 mb-2" />
+                    <span className="text-blue-700 font-bold text-sm">ドロップして読み込み</span>
+                  </div>
+                )}
+              </div>
+              <div className="mt-2 flex justify-between items-center text-xs text-slate-500">
+                <button onClick={() => fileInputRef.current?.click()} className="flex items-center hover:text-blue-600">
+                  <UploadCloud className="w-4 h-4 mr-1" />
+                  ファイル読込
+                </button>
+                <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
+              </div>
+            </div>
+
+            {/* Generate Button */}
+            <button
+              onClick={handleGenerate}
+              disabled={isLoading || (!inputText.trim() && !formData.customerName && !formData.productName)}
+              className="w-full py-4 bg-slate-900 hover:bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center transition-all disabled:opacity-50 shadow-md active:scale-[0.98]"
+            >
+              {isLoading ? (
+                <><Loader2 className="w-5 h-5 mr-2 animate-spin" />AIが返信を生成中...</>
+              ) : (
+                <><Send className="w-5 h-5 mr-2" />AIで返信文を作成する</>
+              )}
+            </button>
+            
+            {error && (
+              <div className="p-3 bg-red-50 text-red-600 rounded-lg flex items-start text-sm border border-red-100">
+                <AlertCircle className="w-5 h-5 mr-2 shrink-0" />
+                <p>{error}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Output */}
+          <div className="w-full md:w-1/2 flex flex-col h-full mt-6 md:mt-0">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-slate-700">
+                生成された返信文 ({media})
+              </label>
+              {generatedText && (
+                <button
+                  onClick={handleCopy}
+                  className="flex items-center text-sm px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 shadow-sm"
+                >
+                  {copied ? (
+                    <><CheckCircle2 className="w-4 h-4 mr-1.5 text-green-500" />コピー完了</>
+                  ) : (
+                    <><Copy className="w-4 h-4 mr-1.5" />コピー</>
+                  )}
+                </button>
+              )}
+            </div>
+            
+            <div className="flex-1 relative rounded-xl border border-slate-200 bg-slate-50 overflow-hidden shadow-inner min-h-[400px]">
+              {generatedText ? (
+                <div className="absolute inset-0 p-5 overflow-y-auto whitespace-pre-wrap text-slate-700 leading-relaxed font-mono text-sm">
+                  {generatedText}
+                </div>
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-6 text-center">
+                  <MessageSquare className="w-12 h-12 mb-3 opacity-20" />
+                  <p className="text-sm">左側で情報を入力し、<br/>「AIで返信文を作成する」を押してください。</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}

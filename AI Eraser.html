@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini AI Eraser</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            background-color: #0f172a; /* Slate 900 */
+            color: #f8fafc;
+            font-family: 'Segoe UI', sans-serif;
+            overscroll-behavior: none;
+        }
+        .canvas-bg {
+            background-image: 
+                linear-gradient(45deg, #1e293b 25%, transparent 25%), 
+                linear-gradient(-45deg, #1e293b 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #1e293b 75%), 
+                linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        canvas {
+            touch-action: none;
+            cursor: crosshair;
+            transform-origin: center center;
+            transition: transform 0.1s ease-out; /* Smooth zoom/pan */
+        }
+        .mode-active {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+            border-color: #3b82f6;
+        }
+        /* Loading Animation */
+        .gemini-loader {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            position: relative;
+        }
+        .gemini-loader::after {
+            content: '';
+            position: absolute;
+            inset: 4px;
+            background: #0f172a;
+            border-radius: 50%;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        
+        .btn-gradient {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-gradient:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Main Container -->
+    <div class="w-full max-w-5xl h-full max-h-[90vh] flex flex-col gap-4">
+        
+        <!-- Header -->
+        <div class="bg-slate-800/80 backdrop-blur p-4 rounded-2xl border border-slate-700 flex flex-wrap items-center justify-between gap-4 shadow-xl z-10">
+            <div class="flex items-center gap-3">
+                <div class="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600">
+                    <i data-lucide="sparkles" class="text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-xl tracking-tight">Gemini AI Eraser</h1>
+                    <p class="text-xs text-blue-400">Powered by Gemini 2.5 Flash</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4 flex-1 justify-center sm:justify-end">
+                <!-- Tool Toggle -->
+                <div class="flex bg-slate-900/50 rounded-lg p-1 border border-slate-700">
+                    <button onclick="setTool('brush')" id="btnBrush" class="p-2 rounded-md transition mode-active" title="ブラシモード">
+                        <i data-lucide="brush" size="18"></i>
+                    </button>
+                    <button onclick="setTool('pan')" id="btnPan" class="p-2 rounded-md transition text-slate-400 hover:text-white" title="移動モード">
+                        <i data-lucide="hand" size="18"></i>
+                    </button>
+                </div>
+
+                <!-- Brush Size -->
+                <div class="flex items-center gap-3 bg-slate-900/50 px-4 py-2 rounded-full border border-slate-700">
+                    <span class="text-xs text-slate-400">ブラシ</span>
+                    <input type="range" id="brushSize" min="5" max="100" value="5" class="w-24 accent-blue-500">
+                    <div id="brushPreview" class="w-4 h-4 rounded-full bg-green-400"></div>
+                </div>
+
+                <!-- Action Button -->
+                <button onclick="runGeminiInpainting()" id="runBtn" class="btn-gradient text-white px-6 py-2 rounded-full font-bold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i data-lucide="wand-2" size="18"></i>
+                    AIで消去
+                </button>
+            </div>
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="flex-1 relative rounded-2xl overflow-hidden border-2 border-slate-700 canvas-bg flex items-center justify-center shadow-inner group" id="canvasContainer">
+            
+            <!-- Upload Placeholder -->
+            <div id="placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 z-20 cursor-pointer hover:bg-slate-900/80 transition" onclick="document.getElementById('fileInput').click()">
+                <div class="bg-slate-800 p-8 rounded-full mb-6 group-hover:scale-105 transition duration-300 border border-slate-700">
+                    <i data-lucide="image-plus" class="text-blue-500 w-16 h-16"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-white">画像をアップロード</h2>
+                <p class="text-slate-400 mt-2">ドラッグ＆ドロップ または クリック</p>
+            </div>
+
+            <canvas id="mainCanvas" class="hidden shadow-2xl"></canvas>
+
+            <!-- Zoom Controls -->
+            <div class="absolute top-4 right-4 flex flex-col gap-2 z-20" id="zoomControls" style="display:none;">
+                <button onclick="adjustZoom(0.2)" class="p-2 bg-slate-800/90 hover:bg-slate-700 text-white rounded-lg border border-slate-600 shadow-lg transition" title="拡大">
+                    <i data-lucide="plus" size="20"></i>
+                </button>
+                <button onclick="resetZoom()" class="p-2 bg-slate-800/90 hover:bg-slate-700 text-white rounded-lg border border-slate-600 shadow-lg transition text-xs font-bold" title="リセット">
+                    100%
+                </button>
+                <button onclick="adjustZoom(-0.2)" class="p-2 bg-slate-800/90 hover:bg-slate-700 text-white rounded-lg border border-slate-600 shadow-lg transition" title="縮小">
+                    <i data-lucide="minus" size="20"></i>
+                </button>
+            </div>
+
+            <!-- Loading Overlay -->
+            <div id="loadingOverlay" class="absolute inset-0 bg-slate-900/80 backdrop-blur-md z-30 flex flex-col items-center justify-center hidden">
+                <div class="gemini-loader mb-6"></div>
+                <h3 class="text-xl font-bold text-white mb-2">Gemini AI 処理中...</h3>
+                <p class="text-slate-400 text-sm max-w-xs text-center">画像の内容を解析し、背景を再生成しています</p>
+            </div>
+        </div>
+        
+        <!-- Tools Bar (Moved outside relative container to avoid overlap) -->
+        <div class="bg-slate-800/80 backdrop-blur border border-slate-700 rounded-full px-4 py-2 flex items-center justify-center gap-2 shadow-xl mx-auto" id="toolsBar" style="display:none;">
+             <!-- Added Change Image Button -->
+             <button onclick="document.getElementById('fileInput').click()" class="p-2 hover:bg-slate-700 rounded-full text-slate-300 transition" title="画像を変更">
+                <i data-lucide="image-plus" size="20"></i>
+            </button>
+            <div class="w-px h-6 bg-slate-700 mx-1"></div>
+
+             <button onclick="undo()" id="undoBtn" class="p-2 hover:bg-slate-700 rounded-full text-slate-300 transition" title="戻す">
+                <i data-lucide="undo-2" size="20"></i>
+            </button>
+            <div class="w-px h-6 bg-slate-700 mx-1"></div>
+            <button onclick="resetMask()" class="p-2 hover:bg-red-500/20 hover:text-red-400 rounded-full text-slate-300 transition" title="選択解除">
+                <i data-lucide="x" size="20"></i>
+            </button>
+            <div class="w-px h-6 bg-slate-700 mx-1"></div>
+            <button onclick="downloadImage()" class="p-2 hover:bg-blue-500/20 hover:text-blue-400 rounded-full text-slate-300 transition" title="保存">
+                <i data-lucide="download" size="20"></i>
+            </button>
+        </div>
+        
+        <!-- Status Bar -->
+        <div class="flex justify-between text-xs text-slate-500 px-2">
+            <span>Model: gemini-2.5-flash-image-preview</span>
+            <span id="statusText">Ready</span>
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*" class="hidden">
+
+    <script>
+        // --- Configuration ---
+        const apiKey = ""; 
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+
+        // --- Init Icons ---
+        lucide.createIcons();
+
+        // --- Elements ---
+        const canvas = document.getElementById('mainCanvas');
+        const container = document.getElementById('canvasContainer');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const placeholder = document.getElementById('placeholder');
+        const brushSizeInput = document.getElementById('brushSize');
+        const brushPreview = document.getElementById('brushPreview');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const statusText = document.getElementById('statusText');
+        const toolsBar = document.getElementById('toolsBar');
+        const zoomControls = document.getElementById('zoomControls');
+        const btnBrush = document.getElementById('btnBrush');
+        const btnPan = document.getElementById('btnPan');
+
+        // --- State ---
+        let img = new Image();
+        let originalImageData = null; 
+        let historyStack = []; 
+        let isDrawing = false;
+        let isPanning = false;
+        let lastX = 0, lastY = 0;
+        
+        // Zoom & Pan State
+        let currentScale = 1;
+        let panX = 0;
+        let panY = 0;
+        let currentTool = 'brush'; // 'brush' or 'pan'
+
+        // --- Setup ---
+        updateBrushPreview();
+        brushSizeInput.addEventListener('input', updateBrushPreview);
+
+        function updateBrushPreview() {
+            const size = brushSizeInput.value;
+            brushPreview.style.width = Math.min(size, 24) + 'px';
+            brushPreview.style.height = Math.min(size, 24) + 'px';
+        }
+
+        function setStatus(msg) {
+            statusText.textContent = msg;
+        }
+
+        // --- Tool Switching ---
+        function setTool(tool) {
+            currentTool = tool;
+            if (tool === 'brush') {
+                btnBrush.classList.add('mode-active', 'text-white');
+                btnBrush.classList.remove('text-slate-400');
+                btnPan.classList.remove('mode-active', 'text-white');
+                btnPan.classList.add('text-slate-400');
+                canvas.style.cursor = 'crosshair';
+            } else {
+                btnPan.classList.add('mode-active', 'text-white');
+                btnPan.classList.remove('text-slate-400');
+                btnBrush.classList.remove('mode-active', 'text-white');
+                btnBrush.classList.add('text-slate-400');
+                canvas.style.cursor = 'grab';
+            }
+        }
+        // Expose to window for HTML onclick
+        window.setTool = setTool;
+
+        // --- Drag & Drop & File Loading ---
+        window.addEventListener('dragover', (e) => e.preventDefault());
+        window.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files.length) loadFile(e.dataTransfer.files[0]);
+        });
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            if (e.target.files.length) loadFile(e.target.files[0]);
+        });
+
+        function loadFile(file) {
+            if (!file.type.startsWith('image/')) return alert('画像を選択してください');
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                img = new Image();
+                img.onload = setupCanvas;
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function setupCanvas() {
+            // Resize if too large
+            const MAX_SIZE = 1200; // Increased slightly for zoom
+            let w = img.width;
+            let h = img.height;
+            if (w > MAX_SIZE || h > MAX_SIZE) {
+                const ratio = Math.min(MAX_SIZE / w, MAX_SIZE / h);
+                w = Math.round(w * ratio);
+                h = Math.round(h * ratio);
+            }
+
+            canvas.width = w;
+            canvas.height = h;
+            
+            ctx.drawImage(img, 0, 0, w, h);
+            originalImageData = ctx.getImageData(0, 0, w, h);
+            historyStack = [];
+
+            // Reset Transform
+            currentScale = 1;
+            panX = 0;
+            panY = 0;
+            updateTransform();
+
+            // UI
+            placeholder.style.display = 'none';
+            canvas.classList.remove('hidden');
+            toolsBar.style.display = 'flex';
+            zoomControls.style.display = 'flex';
+            
+            // Initial Tool Setup: Start in Pan mode
+            setTool('pan');
+            setStatus('移動モード: 画像をドラッグして位置調整、ブラシで消去範囲を選択');
+        }
+
+        // --- Zoom & Pan Logic ---
+        function updateTransform() {
+            canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${currentScale})`;
+        }
+
+        function adjustZoom(delta) {
+            const newScale = Math.max(0.1, Math.min(5, currentScale + delta));
+            currentScale = newScale;
+            updateTransform();
+        }
+        window.adjustZoom = adjustZoom;
+
+        function resetZoom() {
+            currentScale = 1;
+            panX = 0;
+            panY = 0;
+            updateTransform();
+        }
+        window.resetZoom = resetZoom;
+
+        // Mouse Wheel Zoom
+        container.addEventListener('wheel', (e) => {
+            if (!originalImageData) return;
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.1 : 0.1;
+            adjustZoom(delta);
+        }, { passive: false });
+
+
+        // --- Interaction Logic (Draw or Pan) ---
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            // Scaling is handled natively by getBoundingClientRect calculations
+            // relative to the visual size of the canvas element.
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            return { 
+                x: (clientX - rect.left) * scaleX, 
+                y: (clientY - rect.top) * scaleY 
+            };
+        }
+
+        function startInteraction(e) {
+            if (!originalImageData) return;
+            if (e.type === 'touchstart') e.preventDefault(); // Prevent scroll on mobile
+            
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            if (currentTool === 'brush') {
+                isDrawing = true;
+                const pos = getPos(e);
+                lastX = pos.x; lastY = pos.y;
+                draw(e);
+            } else {
+                isPanning = true;
+                lastX = clientX;
+                lastY = clientY;
+                canvas.style.cursor = 'grabbing';
+            }
+        }
+
+        function moveInteraction(e) {
+            if (e.type === 'touchmove') e.preventDefault();
+            
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            if (isDrawing && currentTool === 'brush') {
+                draw(e);
+            } else if (isPanning && currentTool === 'pan') {
+                const deltaX = clientX - lastX;
+                const deltaY = clientY - lastY;
+                panX += deltaX;
+                panY += deltaY;
+                updateTransform();
+                lastX = clientX;
+                lastY = clientY;
+            }
+        }
+
+        function stopInteraction() {
+            isDrawing = false;
+            isPanning = false;
+            if (currentTool === 'pan') canvas.style.cursor = 'grab';
+        }
+
+        function draw(e) {
+            const pos = getPos(e);
+            const size = brushSizeInput.value;
+
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.beginPath();
+            ctx.strokeStyle = '#00FF00'; 
+            ctx.lineWidth = size;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            // If just started, draw a dot
+            if (lastX === pos.x && lastY === pos.y) {
+                 ctx.arc(pos.x, pos.y, size/2, 0, Math.PI * 2);
+                 ctx.fillStyle = '#00FF00';
+                 ctx.fill();
+            } else {
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }
+
+            lastX = pos.x; lastY = pos.y;
+        }
+
+        // Attach events to Container instead of Canvas to handle panning outside canvas bounds better
+        // Actually, attaching to canvas is fine for drawing, but for panning, we might want to catch events on the container?
+        // Let's stick to canvas for now, but `container` might be better for catching 'pan' starts on empty space.
+        // For simplicity: stick to canvas for events. User grabs the image to move it.
+        
+        ['mousedown', 'touchstart'].forEach(ev => canvas.addEventListener(ev, startInteraction, {passive:false}));
+        ['mousemove', 'touchmove'].forEach(ev => window.addEventListener(ev, moveInteraction, {passive:false})); // Window for smoother drag
+        ['mouseup', 'touchend'].forEach(ev => window.addEventListener(ev, stopInteraction));
+
+        // --- Actions ---
+        function resetMask() {
+            if (!originalImageData) return;
+            ctx.putImageData(originalImageData, 0, 0);
+        }
+
+        function undo() {
+            if (historyStack.length === 0) return;
+            originalImageData = historyStack.pop();
+            ctx.putImageData(originalImageData, 0, 0);
+        }
+
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.download = 'gemini-edit.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        // --- Gemini API Call ---
+        async function runGeminiInpainting() {
+            if (!originalImageData) return;
+            
+            const currentData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            let hasGreen = false;
+            for (let i = 0; i < currentData.length; i += 4) {
+                if (currentData[i] < 50 && currentData[i+1] > 200 && currentData[i+2] < 50) {
+                    hasGreen = true;
+                    break;
+                }
+            }
+            if (!hasGreen) {
+                alert("消去したい部分をブラシでなぞってください");
+                return;
+            }
+
+            historyStack.push(originalImageData); 
+
+            loadingOverlay.classList.remove('hidden');
+            setStatus('Gemini APIに送信中...');
+
+            try {
+                const base64Image = canvas.toDataURL('image/png').split(',')[1];
+                const prompt = "In this image, objects to be removed are masked with bright green color (#00FF00). Replace the green masked areas with the natural background context (inpainting). Ensure the result is seamless and realistic. Output ONLY the final image without the green mask.";
+
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            { inlineData: { mimeType: "image/png", data: base64Image } }
+                        ]
+                    }],
+                    generationConfig: {
+                        responseModalities: ["TEXT", "IMAGE"], // Updated: Allow text to prevent errors if model chats
+                    }
+                };
+
+                const result = await fetchWithBackoff(API_URL, payload);
+                console.log("Gemini Response:", result); // Debug logging
+
+                // Check for safety block or empty content
+                if (result.candidates && result.candidates[0]) {
+                     const candidate = result.candidates[0];
+                     if (candidate.finishReason !== "STOP" && candidate.finishReason !== "MAX_TOKENS") {
+                         throw new Error(`生成が停止されました。理由: ${candidate.finishReason} (Safety Settings等の可能性があります)`);
+                     }
+                     
+                     if (!candidate.content || !candidate.content.parts) {
+                         throw new Error("予期しないレスポンス形式です (パーツがありません)。");
+                     }
+
+                    const parts = candidate.content.parts;
+                    const imagePart = parts.find(p => p.inlineData);
+                    
+                    if (imagePart) {
+                        const newImageData = imagePart.inlineData.data;
+                        const newImg = new Image();
+                        newImg.onload = () => {
+                            ctx.drawImage(newImg, 0, 0, canvas.width, canvas.height);
+                            originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                            setStatus('完了しました');
+                            loadingOverlay.classList.add('hidden');
+                        };
+                        newImg.src = `data:image/png;base64,${newImageData}`;
+                    } else {
+                        // If no image, maybe there is text explaining why
+                        const textPart = parts.find(p => p.text);
+                        if (textPart) {
+                            console.warn("AI Response Text:", textPart.text);
+                            throw new Error("画像が生成されませんでした。AIの応答: " + textPart.text);
+                        }
+                        throw new Error("AIが画像を生成しませんでした。");
+                    }
+                } else {
+                    throw new Error("予期しないレスポンス形式です (候補がありません)。");
+                }
+
+            } catch (error) {
+                console.error(error);
+                alert("エラーが発生しました: " + error.message);
+                setStatus('エラー');
+                loadingOverlay.classList.add('hidden');
+                ctx.putImageData(originalImageData, 0, 0);
+            }
+        }
+
+        async function fetchWithBackoff(url, payload, retries = 3, delay = 1000) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        console.error("API Error Response:", errText);
+                        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                    }
+                    
+                    return await response.json();
+                } catch (err) {
+                    if (i === retries - 1) throw err;
+                    await new Promise(res => setTimeout(res, delay * Math.pow(2, i)));
+                }
+            }
+        }
+    </script>
+</body>
+</html>

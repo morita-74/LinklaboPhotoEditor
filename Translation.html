@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Translator - Conversation Mode</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes pulse-red {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        @keyframes pulse-blue {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        .mic-active-red { animation: pulse-red 2s infinite; background-color: #ef4444 !important; }
+        .mic-active-blue { animation: pulse-blue 2s infinite; background-color: #3b82f6 !important; }
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .chat-container { max-height: 50vh; overflow-y: auto; scroll-behavior: smooth; }
+    </style>
+</head>
+<body class="text-gray-800 font-sans">
+
+    <div class="max-w-2xl mx-auto px-4 py-8">
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-indigo-700 flex items-center gap-2">
+                <i class="fas fa-comments text-3xl"></i>
+                Gemini Talk
+            </h1>
+            <div class="flex items-center gap-2 bg-white/50 p-1 rounded-full border">
+                <button id="standardModeBtn" class="px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-indigo-600 text-white shadow-sm">通常</button>
+                <button id="conversationModeBtn" class="px-4 py-1.5 rounded-full text-xs font-bold transition-all text-gray-500 hover:text-indigo-600">対話モード</button>
+            </div>
+        </header>
+
+        <!-- Language Selectors (Persistent) -->
+        <div class="glass-morphism rounded-2xl p-4 mb-6 flex items-center justify-between gap-2 shadow-sm">
+            <div class="flex-1">
+                <label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">言語 A</label>
+                <select id="langA" class="w-full bg-transparent font-medium focus:outline-none">
+                    <option value="ja-JP">日本語 (JP)</option>
+                    <option value="en-US" selected>English (US)</option>
+                    <option value="zh-CN">简体中文 (CN)</option>
+                    <option value="ko-KR">한국어 (KR)</option>
+                    <option value="fr-FR">Français (FR)</option>
+                    <option value="de-DE">Deutsch (DE)</option>
+                    <option value="es-ES">Español (ES)</option>
+                </select>
+            </div>
+            
+            <div class="p-2 text-indigo-300">
+                <i class="fas fa-arrows-alt-h"></i>
+            </div>
+
+            <div class="flex-1 text-right">
+                <label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">言語 B</label>
+                <select id="langB" class="w-full bg-transparent font-medium focus:outline-none text-right">
+                    <option value="en-US">English (US)</option>
+                    <option value="ja-JP" selected>日本語 (JP)</option>
+                    <option value="zh-CN">简体中文 (CN)</option>
+                    <option value="ko-KR">한국어 (KR)</option>
+                    <option value="fr-FR">Français (FR)</option>
+                    <option value="de-DE">Deutsch (DE)</option>
+                    <option value="es-ES">Español (ES)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Standard Mode UI -->
+        <div id="standardUI" class="space-y-6">
+            <div class="glass-morphism rounded-3xl p-6 shadow-lg transition-all duration-300">
+                <div class="relative mb-4">
+                    <textarea id="inputText" rows="3" class="w-full bg-white/60 border border-gray-200 rounded-xl p-4 resize-none text-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 placeholder-gray-400 transition-all" placeholder="話すか、入力してください..."></textarea>
+                    <div id="interimDisplay" class="absolute bottom-4 left-4 text-gray-400 italic text-sm pointer-events-none"></div>
+                </div>
+                <div class="flex justify-between items-center border-t border-gray-100 pt-4">
+                    <button id="micBtn" class="w-16 h-16 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700 transition-all active:scale-95">
+                        <i class="fas fa-microphone text-2xl"></i>
+                    </button>
+                    <button id="translateBtn" class="bg-indigo-100 text-indigo-700 px-6 py-3 rounded-xl font-bold hover:bg-indigo-200 transition">翻訳</button>
+                </div>
+            </div>
+
+            <div id="resultCard" class="glass-morphism rounded-3xl p-6 shadow-lg hidden">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold text-indigo-600 uppercase tracking-widest">結果</span>
+                    <div class="flex gap-2">
+                        <button id="copyBtn" class="p-2 text-gray-400 hover:text-indigo-600 transition"><i class="far fa-copy"></i></button>
+                        <button id="speakBtn" class="p-2 text-gray-400 hover:text-indigo-600 transition"><i class="fas fa-volume-up"></i></button>
+                    </div>
+                </div>
+                <p id="outputText" class="text-xl font-medium leading-relaxed"></p>
+            </div>
+        </div>
+
+        <!-- Conversation Mode UI (Hidden by default) -->
+        <div id="conversationUI" class="hidden space-y-4">
+            <div id="chatHistory" class="chat-container space-y-4 p-4 rounded-2xl bg-black/5 min-h-[300px]">
+                <div class="text-center text-gray-400 text-sm py-10">会話を開始してください</div>
+            </div>
+
+            <div id="convInterim" class="text-center text-sm text-indigo-500 italic h-6"></div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <button id="micBtnA" class="flex flex-col items-center gap-2 p-4 bg-white rounded-2xl shadow hover:bg-indigo-50 transition-all border-b-4 border-indigo-200">
+                    <div class="w-14 h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-md"><i class="fas fa-microphone"></i></div>
+                    <span class="text-xs font-bold text-gray-600" id="labelA">言語 A で話す</span>
+                </button>
+                <button id="micBtnB" class="flex flex-col items-center gap-2 p-4 bg-white rounded-2xl shadow hover:bg-blue-50 transition-all border-b-4 border-blue-200">
+                    <div class="w-14 h-14 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-md"><i class="fas fa-microphone"></i></div>
+                    <span class="text-xs font-bold text-gray-600" id="labelB">言語 B で話す</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Common History Footer -->
+        <div class="mt-8 border-t pt-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-gray-600">履歴</h3>
+                <button id="clearHistory" class="text-xs text-gray-400 hover:text-red-500">消去</button>
+            </div>
+            <div id="historyList" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <div id="errorToast" class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-full shadow-2xl hidden z-50 transition-opacity">エラー</div>
+
+    <script>
+        const apiKey = "";
+        let state = {
+            mode: 'standard', // 'standard' or 'conversation'
+            isRecording: false,
+            activeSpeaker: null, // 'A' or 'B'
+            recognition: null,
+            history: JSON.parse(localStorage.getItem('translation_history_v2')) || []
+        };
+
+        // DOM
+        const els = {
+            standardUI: document.getElementById('standardUI'),
+            conversationUI: document.getElementById('conversationUI'),
+            standardModeBtn: document.getElementById('standardModeBtn'),
+            conversationModeBtn: document.getElementById('conversationModeBtn'),
+            langA: document.getElementById('langA'),
+            langB: document.getElementById('langB'),
+            inputText: document.getElementById('inputText'),
+            outputText: document.getElementById('outputText'),
+            resultCard: document.getElementById('resultCard'),
+            chatHistory: document.getElementById('chatHistory'),
+            historyList: document.getElementById('historyList'),
+            micBtn: document.getElementById('micBtn'),
+            micBtnA: document.getElementById('micBtnA'),
+            micBtnB: document.getElementById('micBtnB'),
+            labelA: document.getElementById('labelA'), // Added missing element
+            labelB: document.getElementById('labelB'), // Added missing element
+            interimDisplay: document.getElementById('interimDisplay'),
+            convInterim: document.getElementById('convInterim')
+        };
+
+        // --- Speech Recognition ---
+        function getRecognition(lang, onResult, onEnd) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return null;
+            const rec = new SpeechRecognition();
+            rec.continuous = false; // Conversation mode works better with per-sentence recognition
+            rec.interimResults = true;
+            rec.lang = lang;
+            rec.onresult = onResult;
+            rec.onend = onEnd;
+            rec.onerror = (e) => { console.error(e); stopAllRecording(); };
+            return rec;
+        }
+
+        function stopAllRecording() {
+            state.isRecording = false;
+            if (state.recognition) state.recognition.stop();
+            els.micBtn.classList.remove('mic-active-red');
+            els.micBtnA.querySelector('div').classList.remove('mic-active-red');
+            els.micBtnB.querySelector('div').classList.remove('mic-active-blue');
+            els.interimDisplay.textContent = '';
+            els.convInterim.textContent = '';
+        }
+
+        // --- Translation Core ---
+        async function translate(text, fromLangCode, toLangCode) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const targetName = document.querySelector(`option[value="${toLangCode}"]`).text;
+            
+            const payload = {
+                contents: [{ parts: [{ text: `Translate the following text to ${targetName} naturally. Return ONLY the translation. Text: ${text}` }] }]
+            };
+
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!res.ok) throw new Error();
+                    const data = await res.json();
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "翻訳エラー";
+                } catch (e) {
+                    if (i === 4) throw e;
+                    await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000));
+                }
+            }
+        }
+
+        // --- UI Updates ---
+        function appendChatMessage(original, translated, speaker) {
+            const isA = speaker === 'A';
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex flex-col ${isA ? 'items-start' : 'items-end'} animate-fade-in`;
+            
+            wrapper.innerHTML = `
+                <div class="max-w-[85%] rounded-2xl p-3 shadow-sm ${isA ? 'bg-indigo-600 text-white rounded-bl-none' : 'bg-white text-gray-800 rounded-br-none border border-gray-100'}">
+                    <p class="text-xs opacity-70 mb-1">${original}</p>
+                    <p class="font-medium text-lg">${translated}</p>
+                </div>
+            `;
+            
+            if (els.chatHistory.querySelector('.text-center')) els.chatHistory.innerHTML = '';
+            els.chatHistory.appendChild(wrapper);
+            els.chatHistory.scrollTop = els.chatHistory.scrollHeight;
+        }
+
+        function speak(text, lang) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = lang;
+            window.speechSynthesis.speak(u);
+        }
+
+        // --- Mode Switching ---
+        function switchMode(mode) {
+            state.mode = mode;
+            stopAllRecording();
+            if (mode === 'standard') {
+                els.standardUI.classList.remove('hidden');
+                els.conversationUI.classList.add('hidden');
+                els.standardModeBtn.className = "px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-indigo-600 text-white shadow-sm";
+                els.conversationModeBtn.className = "px-4 py-1.5 rounded-full text-xs font-bold transition-all text-gray-500 hover:text-indigo-600";
+            } else {
+                els.standardUI.classList.add('hidden');
+                els.conversationUI.classList.remove('hidden');
+                els.conversationModeBtn.className = "px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-blue-500 text-white shadow-sm";
+                els.standardModeBtn.className = "px-4 py-1.5 rounded-full text-xs font-bold transition-all text-gray-500 hover:text-indigo-600";
+                updateConvLabels();
+            }
+        }
+
+        function updateConvLabels() {
+            if (els.labelA) els.labelA.textContent = els.langA.options[els.langA.selectedIndex].text;
+            if (els.labelB) els.labelB.textContent = els.langB.options[els.langB.selectedIndex].text;
+        }
+
+        // --- Actions ---
+        async function startConversationVoice(speaker) {
+            if (state.isRecording) { stopAllRecording(); return; }
+            
+            const fromLang = speaker === 'A' ? els.langA.value : els.langB.value;
+            const toLang = speaker === 'A' ? els.langB.value : els.langA.value;
+            
+            state.activeSpeaker = speaker;
+            state.recognition = getRecognition(fromLang, 
+                (event) => {
+                    const result = Array.from(event.results).map(r => r[0].transcript).join('');
+                    els.convInterim.textContent = result;
+                    if (event.results[0].isFinal) {
+                        processConversation(result, fromLang, toLang, speaker);
+                    }
+                },
+                () => { stopAllRecording(); }
+            );
+
+            if (state.recognition) {
+                state.isRecording = true;
+                const btn = speaker === 'A' ? els.micBtnA : els.micBtnB;
+                btn.querySelector('div').classList.add(speaker === 'A' ? 'mic-active-red' : 'mic-active-blue');
+                state.recognition.start();
+            }
+        }
+
+        async function processConversation(text, from, to, speaker) {
+            els.convInterim.textContent = "翻訳中...";
+            try {
+                const result = await translate(text, from, to);
+                appendChatMessage(text, result, speaker);
+                // speak(result, to); // 自動読み上げを停止
+                saveToHistory(text, result, from, to);
+            } catch (e) {
+                showError("翻訳に失敗しました。");
+            } finally {
+                els.convInterim.textContent = "";
+            }
+        }
+
+        // --- Standard Translation ---
+        async function startStandardVoice() {
+            if (state.isRecording) { stopAllRecording(); return; }
+            state.recognition = getRecognition(els.langA.value, 
+                (e) => {
+                    const res = Array.from(e.results).map(r => r[0].transcript).join('');
+                    els.interimDisplay.textContent = res;
+                    if (e.results[0].isFinal) els.inputText.value = res;
+                },
+                () => { stopAllRecording(); handleStandardTranslate(); }
+            );
+            if (state.recognition) {
+                state.isRecording = true;
+                els.micBtn.classList.add('mic-active-red');
+                state.recognition.start();
+            }
+        }
+
+        async function handleStandardTranslate() {
+            const text = els.inputText.value.trim();
+            if (!text) return;
+            try {
+                const res = await translate(text, els.langA.value, els.langB.value);
+                els.outputText.textContent = res;
+                els.resultCard.classList.remove('hidden');
+                // speak(res, els.langB.value); // 自動読み上げを停止
+                saveToHistory(text, res, els.langA.value, els.langB.value);
+                els.inputText.value = '';
+            } catch (e) { showError("エラー"); }
+        }
+
+        function saveToHistory(original, translated, from, to) {
+            const entry = { id: Date.now(), original, translated, from, to };
+            state.history.unshift(entry);
+            if (state.history.length > 20) state.history.pop();
+            localStorage.setItem('translation_history_v2', JSON.stringify(state.history));
+            renderHistory();
+        }
+
+        function renderHistory() {
+            els.historyList.innerHTML = '';
+            state.history.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'bg-white/50 p-4 rounded-xl border border-white/20 hover:bg-white transition cursor-pointer';
+                div.innerHTML = `<div class="text-sm line-clamp-1 font-medium">${item.original}</div><div class="text-indigo-600 text-sm font-bold line-clamp-1">${item.translated}</div>`;
+                div.onclick = () => { els.inputText.value = item.original; els.outputText.textContent = item.translated; els.resultCard.classList.remove('hidden'); };
+                els.historyList.appendChild(div);
+            });
+        }
+
+        function showError(m) {
+            const t = document.getElementById('errorToast');
+            t.textContent = m; t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 3000);
+        }
+
+        // --- Listeners ---
+        els.standardModeBtn.onclick = () => switchMode('standard');
+        els.conversationModeBtn.onclick = () => switchMode('conversation');
+        els.micBtn.onclick = startStandardVoice;
+        els.micBtnA.onclick = () => startConversationVoice('A');
+        els.micBtnB.onclick = () => startConversationVoice('B');
+        document.getElementById('translateBtn').onclick = handleStandardTranslate;
+        document.getElementById('clearHistory').onclick = () => { state.history = []; renderHistory(); };
+        document.getElementById('speakBtn').onclick = () => speak(els.outputText.textContent, els.langB.value);
+        els.langA.onchange = updateConvLabels;
+        els.langB.onchange = updateConvLabels;
+
+        renderHistory();
+    </script>
+</body>
+</html>

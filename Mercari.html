@@ -1,0 +1,685 @@
+import React, { useState, useRef } from 'react';
+import { Sparkles, Copy, RefreshCw, ShoppingBag, CheckCircle, AlertCircle, Trash2, Image as ImageIcon, Video, X, PenTool, List, Star, Link as LinkIcon, Upload, AlertTriangle, Camera, DollarSign, TrendingUp, Lightbulb, Smartphone, Info, Scissors } from 'lucide-react';
+
+export default function App() {
+  const [productName, setProductName] = useState('');
+  const [features, setFeatures] = useState('');
+  const [condition, setCondition] = useState('目立った傷や汚れなし');
+  const [specialNotes, setSpecialNotes] = useState('');
+  const [tone, setTone] = useState('丁寧・親切（個人向け）');
+  const [isHandmade, setIsHandmade] = useState(false);
+  
+  // Image handling
+  const [activeTab, setActiveTab] = useState('file');
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [mediaUrl, setMediaUrl] = useState('');
+  const [urlLoading, setUrlLoading] = useState(false);
+  
+  const [generatedContent, setGeneratedContent] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const apiKey = ""; 
+
+  const conditions = [
+    '新品、未使用',
+    '未使用に近い',
+    '目立った傷や汚れなし',
+    'やや傷や汚れあり',
+    '傷や汚れあり',
+    '全体的に状態が悪い'
+  ];
+
+  const tones = [
+    { value: '丁寧・親切（個人向け）', label: '丁寧・親切（個人出品向け）' },
+    { value: 'シンプル・簡潔', label: 'シンプル・簡潔（読む手間を省く）' },
+    { value: 'プロ・業者風', label: 'プロ・業者風（ショップ出品向け）' },
+    { value: '熱意・おすすめ感', label: '熱意・おすすめ感（魅力を全力アピール）' },
+  ];
+
+  const processFile = (file) => {
+    if (!file) return;
+
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+
+    if (!isImage && !isVideo) {
+      setError('画像または動画ファイルを選択してください。');
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      setError('ファイルサイズが大きすぎます（50MB以内）。動画の代わりに「スクリーンショット画像」を使うとスムーズです。');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result.split(',')[1];
+      setSelectedImage({
+        data: base64String,
+        mimeType: file.type
+      });
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+    setError('');
+  };
+
+  const handleUrlLoad = async () => {
+    if (!mediaUrl) return;
+    setUrlLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(mediaUrl, { mode: 'cors' }).catch(err => {
+         throw new Error('CORS_ERROR');
+      });
+
+      if (!response.ok) throw new Error('FETCH_ERROR');
+
+      const blob = await response.blob();
+      
+      if (!blob.type.startsWith('image/') && !blob.type.startsWith('video/')) {
+        throw new Error('INVALID_TYPE');
+      }
+
+      if (blob.size > 50 * 1024 * 1024) {
+        throw new Error('SIZE_ERROR');
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result.split(',')[1];
+        setSelectedImage({
+          data: base64String,
+          mimeType: blob.type
+        });
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(blob);
+      setMediaUrl('');
+
+    } catch (err) {
+      let errorMsg = '画像の読み込みに失敗しました。';
+      if (err.message === 'CORS_ERROR' || err.message === 'Failed to fetch') {
+        errorMsg = 'セキュリティ制限により読み込めませんでした。画像をダウンロードして「アップロード」してください。';
+      } else if (err.message === 'INVALID_TYPE') {
+        errorMsg = '指定されたURLは画像または動画ではないようです。';
+      } else if (err.message === 'SIZE_ERROR') {
+        errorMsg = 'ファイルサイズが大きすぎます（50MB以内）。';
+      }
+      setError(errorMsg);
+    } finally {
+      setUrlLoading(false);
+    }
+  };
+
+  const handleImageUpload = (e) => {
+    processFile(e.target.files[0]);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    processFile(e.dataTransfer.files[0]);
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!productName && !features && !selectedImage) {
+      setError('商品名、特徴、または画像・動画を入力してください。');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setGeneratedContent(null);
+    setCopySuccess(false);
+
+    let prompt = `
+      あなたはメルカリ販売のプロフェッショナルです。以下の情報を元に、メルカリで即売れするための「出品タイトル」「商品説明文」「価格戦略」「販売アドバイス」を作成してください。
+
+      【基本情報】
+      ・商品名（ブランド名や型番など）: ${productName || '（メディアから推測してください）'}
+      ・商品区分: ${isHandmade ? 'ハンドメイド・手作り作品（一点もの、手作りの温かみ、作家のこだわりを強くアピールしてください）' : '一般商品・既製品'}
+      ・特徴・アピールポイント: ${features || '（メディアから推測してください）'}
+      ・商品の状態: ${condition}
+      ・特記事項（傷、欠品、発送方法など）: ${specialNotes || '特になし'}
+      ・文章のトーン: ${tone}
+    `;
+
+    if (selectedImage) {
+      const isVideo = selectedImage.mimeType.startsWith('video/');
+      const mediaTypeJP = isVideo ? '動画' : '画像';
+
+      prompt += `
+      【${mediaTypeJP}分析指示】
+      添付された${mediaTypeJP}から、商品のブランド、色、素材、デザインの特徴、状態（傷や汚れの有無）などを詳細に分析し、商品説明に具体的に盛り込んでください。商品名が空欄の場合は、画像から推測してください。
+      `;
+    }
+
+    prompt += `
+      【出力フォーマット】
+      以下の形式のJSONのみを出力してください。
+      {
+        "mercari_title": "検索に引っかかりやすく、魅力を伝えるタイトル（重要：絶対に40文字以内に収めること。【美品】【匿名配送】などの隅付き括弧を活用）",
+        "description": "メルカリの出品用説明文。（挨拶、商品の魅力・おすすめ理由、商品の状態の詳細、サイズや仕様、特記事項、購入時の注意点などを網羅した、コピペしてそのまま使える見やすいレイアウトのテキスト。改行を適度に入れる）",
+        "search_tags": "検索に引っかかるためのハッシュタグ（10個程度。スペース区切り 例: '#ブランド名 #アイテム名 #キーワード'）",
+        "pricing": {
+          "market_range": "メルカリでの一般的な相場（例: 3,000円〜5,000円）",
+          "highest_sold": "実際に売れている最高価格帯（例: 6,000円）",
+          "ai_suggested": "AIが考える適正な出品価格（例: 4,500円。少し高めに出して値下げ交渉に応じるなどの戦略も考慮）",
+          "reason": "その価格を提案する理由と値下げ戦略（1〜2行）"
+        },
+        "sales_advice": [
+          "メルカリでこの商品をより高く、早く売るための具体的なアドバイス（写真の撮り方、出品する曜日や時間帯、梱包の工夫など）1",
+          "アドバイス2",
+          "アドバイス3"
+        ]
+      }
+    `;
+
+    try {
+      const result = await callGeminiAPI(prompt, selectedImage);
+      const cleanText = result.replace(/```json|```/g, '').trim();
+      let jsonContent = JSON.parse(cleanText);
+
+      // Data normalization
+      if (!Array.isArray(jsonContent.sales_advice)) {
+        jsonContent.sales_advice = [];
+      }
+      
+      ['mercari_title', 'description', 'search_tags'].forEach(field => {
+        if (typeof jsonContent[field] !== 'string') {
+           if (Array.isArray(jsonContent[field])) {
+             jsonContent[field] = jsonContent[field].join('\n');
+           } else {
+             jsonContent[field] = String(jsonContent[field] || '');
+           }
+        }
+      });
+
+      setGeneratedContent(jsonContent);
+    } catch (err) {
+      console.error(err);
+      setError('生成中にエラーが発生しました。もう一度お試しください。');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const callGeminiAPI = async (prompt, image = null, retryCount = 0) => {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+    
+    const parts = [{ text: prompt }];
+    
+    if (image) {
+      parts.push({
+        inlineData: {
+          mimeType: image.mimeType,
+          data: image.data
+        }
+      });
+    }
+
+    const payload = {
+      contents: [{ parts: parts }],
+      generationConfig: {
+        responseMimeType: "application/json"
+      }
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
+      const data = await response.json();
+      return data.candidates[0].content.parts[0].text;
+
+    } catch (error) {
+      if (retryCount < 3) {
+        const delay = Math.pow(2, retryCount) * 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return callGeminiAPI(prompt, image, retryCount + 1);
+      }
+      throw error;
+    }
+  };
+
+  const copyToClipboard = () => {
+    if (!generatedContent) return;
+
+    const textToCopy = `
+${generatedContent.mercari_title}
+
+${generatedContent.description}
+
+${generatedContent.search_tags}
+    `.trim();
+
+    const textArea = document.createElement("textarea");
+    textArea.value = textToCopy;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Copy failed', err);
+    }
+    document.body.removeChild(textArea);
+  };
+
+  const clearForm = () => {
+    setProductName('');
+    setFeatures('');
+    setCondition('目立った傷や汚れなし');
+    setSpecialNotes('');
+    setTone('丁寧・親切（個人向け）');
+    setIsHandmade(false);
+    removeImage();
+    setGeneratedContent(null);
+    setError('');
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f5f5f5] text-gray-800 font-sans p-4 md:p-8">
+      <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        {/* Input Section */}
+        <div className="space-y-6">
+          <header className="mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="bg-red-500 p-2 rounded-lg">
+                <Smartphone className="w-6 h-6 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900">AIメルカリ出品マスター</h1>
+            </div>
+            <p className="text-gray-500 text-sm">
+              商品の写真と少しの情報を入れるだけで、売れるタイトル・説明文・価格相場を自動生成します。
+            </p>
+          </header>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-5">
+            
+            {/* Image/Video Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                商品画像 <span className="text-gray-400 text-xs font-normal ml-1">（画像からAIが情報を読み取ります）</span>
+              </label>
+
+              {!imagePreview ? (
+                <>
+                  <div className="flex border-b border-gray-200 mb-0">
+                    <button
+                      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'file' ? 'border-red-500 text-red-500' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                      onClick={() => { setActiveTab('file'); setError(''); }}
+                    >
+                      <Upload className="w-4 h-4" /> 写真を選ぶ
+                    </button>
+                    <button
+                      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'url' ? 'border-red-500 text-red-500' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                      onClick={() => { setActiveTab('url'); setError(''); }}
+                    >
+                      <LinkIcon className="w-4 h-4" /> URL入力
+                    </button>
+                  </div>
+
+                  <div className="mt-4">
+                    {activeTab === 'file' ? (
+                      <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-gray-500 cursor-pointer transition-all h-40 ${
+                          isDragging 
+                            ? 'border-red-500 bg-red-50 text-red-500' 
+                            : 'border-gray-300 hover:border-red-500 hover:bg-red-50'
+                        }`}
+                      >
+                        <div className="flex gap-2 mb-2">
+                          <ImageIcon className={`w-8 h-8 ${isDragging ? 'text-red-500' : 'text-gray-400'}`} />
+                        </div>
+                        <p className="text-sm font-medium">クリックして写真をアップロード</p>
+                        <p className={`text-xs mt-1 ${isDragging ? 'text-red-400' : 'text-gray-400'}`}>
+                          ドラッグ＆ドロップも可能（スマホ・PC両対応）
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+                        <input
+                          type="text"
+                          value={mediaUrl}
+                          onChange={(e) => setMediaUrl(e.target.value)}
+                          placeholder="https://example.com/image.jpg"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-red-500 outline-none mb-2"
+                        />
+                        <button
+                          onClick={handleUrlLoad}
+                          disabled={!mediaUrl || urlLoading}
+                          className="w-full bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-600 disabled:opacity-50"
+                        >
+                          {urlLoading ? '読込中...' : '画像を読み込む'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="relative rounded-lg overflow-hidden border border-gray-200 group bg-black mt-2">
+                  {selectedImage?.mimeType?.startsWith('video/') ? (
+                    <video src={imagePreview} className="w-full h-48 object-contain" controls />
+                  ) : (
+                    <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover object-center" />
+                  )}
+                  <button 
+                    onClick={removeImage}
+                    className="absolute top-2 right-2 bg-white/90 p-2 rounded-full text-gray-700 hover:text-red-500 hover:bg-red-50 transition-colors shadow-sm"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+              <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*,video/*" className="hidden" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                商品名・ブランド <span className="text-gray-400 text-xs font-normal ml-1">（画像があれば省略可）</span>
+              </label>
+              <input
+                type="text"
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+                placeholder="例: Apple AirPods Pro 第2世代"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  商品の状態
+                </label>
+                <select
+                  value={condition}
+                  onChange={(e) => setCondition(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none bg-white transition-all"
+                >
+                  {conditions.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  文章のトーン
+                </label>
+                <select
+                  value={tone}
+                  onChange={(e) => setTone(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none bg-white transition-all"
+                >
+                  {tones.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                アピールポイント・特徴
+              </label>
+              <textarea
+                value={features}
+                onChange={(e) => setFeatures(e.target.value)}
+                rows={2}
+                placeholder="例: 半年前に購入、ノイキャン強力、ケース付き"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all resize-none"
+              />
+              
+              <div 
+                className={`mt-3 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                  isHandmade 
+                    ? 'bg-red-50 border-red-200 text-red-900' 
+                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+                onClick={() => setIsHandmade(!isHandmade)}
+              >
+                <div className={`flex items-center justify-center w-5 h-5 rounded border ${isHandmade ? 'bg-red-500 border-red-500' : 'bg-white border-gray-300'}`}>
+                  {isHandmade && <CheckCircle className="w-3.5 h-3.5 text-white" />}
+                </div>
+                <div className="flex items-center gap-2 select-none">
+                  <Scissors className={`w-4 h-4 ${isHandmade ? 'text-red-500' : 'text-gray-400'}`} />
+                  <span className="text-sm font-medium">ハンドメイド作品として生成する</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                <Info className="w-4 h-4 text-gray-400" />
+                特記事項（傷、欠品など）
+              </label>
+              <textarea
+                value={specialNotes}
+                onChange={(e) => setSpecialNotes(e.target.value)}
+                rows={2}
+                placeholder="例: 右耳に小さな擦れあり、箱・ケーブルなし"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all resize-none"
+              />
+            </div>
+
+            {error && (
+              <div className="flex items-start gap-2 text-red-600 bg-red-50 p-3 rounded-lg text-sm">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={handleGenerate}
+                disabled={loading}
+                className={`flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg transition-all shadow-md ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                    データ分析・作成中...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    出品データを生成する
+                  </>
+                )}
+              </button>
+              
+              <button
+                onClick={clearForm}
+                className="px-4 py-3 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors border border-gray-300 bg-white"
+                title="入力をクリア"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Output Section */}
+        <div className="flex flex-col h-full">
+          <div className="flex items-center justify-between mb-2 h-8">
+            <h2 className="text-lg font-bold text-gray-800">出品データ（生成結果）</h2>
+            {generatedContent && (
+              <button
+                onClick={copyToClipboard}
+                className={`flex items-center gap-1.5 text-sm px-4 py-1.5 rounded-full font-bold transition-all ${
+                  copySuccess 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 shadow-sm'
+                }`}
+              >
+                {copySuccess ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" /> コピー完了！
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" /> タイトルと説明をコピー
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+
+          <div className={`flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden relative transition-all duration-500 ${loading ? 'opacity-80' : 'opacity-100'}`}>
+            {loading ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-10 space-y-4">
+                <div className="w-12 h-12 border-4 border-red-100 border-t-red-500 rounded-full animate-spin"></div>
+                <p className="text-red-500 font-bold animate-pulse">売れるキーワードを抽出中...</p>
+              </div>
+            ) : null}
+
+            {!generatedContent && !loading ? (
+              <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-gray-400 p-8 text-center bg-gray-50/50">
+                <Smartphone className="w-16 h-16 mb-4 text-gray-300" />
+                <p className="text-lg font-bold text-gray-500">ここにメルカリ用のデータが表示されます</p>
+                <p className="text-sm mt-2 text-gray-400">そのままコピペして出品に使える<br/>タイトルと説明文を作成します。</p>
+              </div>
+            ) : generatedContent ? (
+              <div className="p-6 md:p-8 h-full overflow-y-auto custom-scrollbar space-y-8">
+                
+                {/* Title */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>出品タイトル
+                    </p>
+                    <span className={`text-xs font-bold px-2 py-1 rounded ${generatedContent.mercari_title.length > 40 ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
+                      {generatedContent.mercari_title.length} / 40文字
+                    </span>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 font-bold text-gray-900 text-lg">
+                    {generatedContent.mercari_title}
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <p className="text-sm font-bold text-gray-700 flex items-center gap-2 mb-2">
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>商品説明文
+                  </p>
+                  <div className="bg-white p-5 rounded-lg border border-gray-200 text-gray-700 text-sm leading-relaxed whitespace-pre-wrap font-sans shadow-inner">
+                    {generatedContent.description}
+                  </div>
+                </div>
+
+                {/* Hashtags */}
+                <div>
+                  <p className="text-sm font-bold text-gray-700 flex items-center gap-2 mb-2">
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>検索用ハッシュタグ
+                  </p>
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-blue-700 text-sm font-medium break-words">
+                    {generatedContent.search_tags}
+                  </div>
+                </div>
+
+                <hr className="border-gray-100" />
+
+                {/* AI Pricing Strategy */}
+                {generatedContent.pricing && (
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="bg-gray-800 px-4 py-3 flex items-center gap-2">
+                      <DollarSign className="w-5 h-5 text-yellow-400" />
+                      <h4 className="font-bold text-white">AI価格分析（非公開データ）</h4>
+                    </div>
+                    <div className="p-5 space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm text-center">
+                          <p className="text-xs text-gray-500 mb-1">一般的な相場</p>
+                          <p className="font-bold text-gray-800">{generatedContent.pricing.market_range}</p>
+                        </div>
+                        <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm text-center">
+                          <p className="text-xs text-gray-500 mb-1">売れている最高値</p>
+                          <p className="font-bold text-gray-800">{generatedContent.pricing.highest_sold}</p>
+                        </div>
+                        <div className="bg-red-50 p-3 rounded-lg border border-red-200 shadow-sm text-center">
+                          <p className="text-xs text-red-600 font-bold mb-1">AIおすすめ出品価格</p>
+                          <p className="font-black text-xl text-red-600">{generatedContent.pricing.ai_suggested}</p>
+                        </div>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg text-sm text-gray-700 flex items-start gap-2 border border-gray-100">
+                        <TrendingUp className="w-5 h-5 shrink-0 text-red-400" />
+                        <p><strong>戦略：</strong>{generatedContent.pricing.reason}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sales Advice */}
+                {generatedContent.sales_advice && generatedContent.sales_advice.length > 0 && (
+                  <div className="bg-amber-50 rounded-xl border border-amber-200 overflow-hidden">
+                    <div className="bg-amber-100/80 px-4 py-3 border-b border-amber-200 flex items-center gap-2">
+                      <Lightbulb className="w-5 h-5 text-amber-600" />
+                      <h4 className="font-bold text-amber-900">もっと早く・高く売るコツ</h4>
+                    </div>
+                    <ul className="p-5 space-y-3">
+                      {generatedContent.sales_advice.map((advice, i) => (
+                        <li key={i} className="flex gap-3 text-amber-900 text-sm">
+                          <CheckCircle className="w-5 h-5 text-amber-500 shrink-0" />
+                          <span className="leading-relaxed font-medium">{advice}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #cbd5e1; border-radius: 20px; border: 3px solid transparent; background-clip: content-box;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+      `}</style>
+    </div>
+  );
+}

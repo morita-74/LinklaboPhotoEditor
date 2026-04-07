@@ -1,0 +1,375 @@
+import React, { useState, useRef, useCallback } from 'react';
+import { UploadCloud, Image as ImageIcon, Download, Loader2, Trash2, Wand2, Sparkles } from 'lucide-react';
+
+export default function App() {
+  const [clubName, setClubName] = useState('野球部');
+  const [tool1, setTool1] = useState('バット');
+  const [tool2, setTool2] = useState('ボール');
+  const [includeUniform, setIncludeUniform] = useState(false);
+  const [referenceImage, setReferenceImage] = useState(null);
+  const [referenceImagePreview, setReferenceImagePreview] = useState(null);
+  const [generatedImages, setGeneratedImages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [isGeneratingIdeas, setIsGeneratingIdeas] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const apiKey = ""; // 実行環境から提供されます
+
+  const fetchWithBackoff = async (url, options, retries = 5) => {
+    const delays = [1000, 2000, 4000, 8000, 16000];
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        if (i === retries - 1) throw error;
+        await new Promise(resolve => setTimeout(resolve, delays[i]));
+      }
+    }
+  };
+
+  const processFile = (file) => {
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setReferenceImagePreview(e.target.result);
+        setReferenceImage(e.target.result.split(',')[1]);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setError("画像ファイルを選択してください。");
+    }
+  };
+
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    setError('');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      processFile(files[0]);
+    }
+  }, []);
+
+  const handleFileChange = (e) => {
+    setError('');
+    if (e.target.files.length > 0) {
+      processFile(e.target.files[0]);
+    }
+  };
+
+  const handleSuggestIdeas = async () => {
+    setIsGeneratingIdeas(true);
+    setError('');
+    try {
+      const prompt = `レーザー彫刻用の白黒イラストのテーマを提案するAIとして振る舞ってください。
+部活動とその部活動で使う道具2つの組み合わせで、レーザー彫刻にすると可愛い・かっこいい具体的なアイデアを1つ提案し、以下のJSON形式で出力してください。
+{"club": "クラブの種類", "tool1": "道具1", "tool2": "道具2"}
+例: {"club": "写真部", "tool1": "アンティークなカメラ", "tool2": "フィルム"}`;
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+      const payload = {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: "application/json" }
+      };
+
+      const result = await fetchWithBackoff(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (generatedText) {
+        const data = JSON.parse(generatedText);
+        setClubName(data.club || '');
+        setTool1(data.tool1 || '');
+        setTool2(data.tool2 || '');
+      } else {
+        throw new Error("アイデアの生成に失敗しました");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("アイデアの提案中にエラーが発生しました。");
+    } finally {
+      setIsGeneratingIdeas(false);
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!clubName && !tool1 && !tool2 && !referenceImage) {
+      setError("クラブの種類や道具を入力するか、画像を追加してください。");
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setGeneratedImages([]);
+
+    try {
+      const combinedText = [clubName, tool1, tool2].filter(t => t.trim() !== '').join(', ');
+      const promptText = combinedText ? `associated with this: ${combinedText}` : 'from the reference image';
+      
+      let uniformPrompt = '';
+      if (includeUniform) {
+        if (referenceImage) {
+          uniformPrompt = ' Also include an empty sports uniform (without a person inside) that strictly incorporates the design from the reference image.';
+        } else {
+          uniformPrompt = ' Also include an empty sports uniform (without a person inside).';
+        }
+      }
+
+      // 否定形を避け、SDスタイル（Super Deformed）と無生物（inanimate objects）を強調
+      const prompt = `black and white line art, pure monochrome, high contrast vector graphic style, suitable for laser engraving. SD style (Super Deformed), thick outlines, rounded chubby shapes. Illustration of inanimate objects: ${promptText}. ${uniformPrompt} Strictly faceless items only, no characters, no humans, no text.`;
+
+      let imageUrl = "";
+      if (referenceImage) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+        const payload = {
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inlineData: { mimeType: "image/png", data: referenceImage } }
+            ]
+          }],
+          generationConfig: { responseModalities: ['IMAGE'] }
+        };
+        const result = await fetchWithBackoff(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const base64 = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+        if (base64) imageUrl = `data:image/png;base64,${base64}`;
+      } else {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
+        const payload = {
+          instances: { prompt: prompt },
+          parameters: { sampleCount: 1 }
+        };
+        const result = await fetchWithBackoff(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const base64 = result.predictions?.[0]?.bytesBase64Encoded;
+        if (base64) imageUrl = `data:image/png;base64,${base64}`;
+      }
+      
+      if (!imageUrl) throw new Error("生成失敗");
+      
+      setGeneratedImages([{ text: combinedText || '参照画像', url: imageUrl }]);
+    } catch (err) {
+      console.error(err);
+      setError("画像生成中にエラーが発生しました。");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownload = (imageUrl, text, index) => {
+    if (imageUrl) {
+      const a = document.createElement('a');
+      a.href = imageUrl;
+      a.download = `laser-${text || 'image'}-${index}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-900 p-4 sm:p-6 lg:p-8 font-sans">
+      <div className="max-w-4xl mx-auto space-y-6">
+        
+        <header className="text-center space-y-2 mb-8">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">彫刻メーカー</h1>
+          <p className="text-gray-500">クラブ名と道具からレーザー彫刻用の白黒イラストを生成します</p>
+        </header>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+          
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <label className="block text-sm font-medium text-gray-700">
+                彫刻のテーマ設定
+              </label>
+              <button
+                onClick={handleSuggestIdeas}
+                disabled={isGeneratingIdeas || loading}
+                className="text-xs flex items-center space-x-1 text-purple-600 hover:text-purple-700 font-medium bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {isGeneratingIdeas ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                <span>✨ AIにおまかせ提案</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">クラブの種類</label>
+                <input
+                  type="text"
+                  value={clubName}
+                  onChange={(e) => setClubName(e.target.value)}
+                  placeholder="例: 野球部"
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-black focus:border-transparent transition-all outline-none"
+                  disabled={loading}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">道具1</label>
+                <input
+                  type="text"
+                  value={tool1}
+                  onChange={(e) => setTool1(e.target.value)}
+                  placeholder="例: バット"
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-black focus:border-transparent transition-all outline-none"
+                  disabled={loading}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">道具2</label>
+                <input
+                  type="text"
+                  value={tool2}
+                  onChange={(e) => setTool2(e.target.value)}
+                  placeholder="例: ボール"
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-black focus:border-transparent transition-all outline-none"
+                  disabled={loading}
+                />
+              </div>
+            </div>
+            
+            {/* ユニフォーム追加のチェックボックス */}
+            <div className="flex items-center space-x-2 pt-2">
+              <input
+                type="checkbox"
+                id="includeUniform"
+                checked={includeUniform}
+                onChange={(e) => setIncludeUniform(e.target.checked)}
+                className="w-5 h-5 text-black border-gray-300 rounded focus:ring-black cursor-pointer"
+                disabled={loading}
+              />
+              <label htmlFor="includeUniform" className="text-sm font-medium text-gray-700 cursor-pointer select-none">
+                ユニフォームをイラストに含める
+              </label>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              参照画像 (オプション)
+            </label>
+            {!referenceImagePreview ? (
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
+                  isDragging ? 'border-black bg-gray-50' : 'border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <UploadCloud className="mx-auto h-10 w-10 text-gray-400 mb-3" />
+                <p className="text-sm text-gray-600">
+                  クリックまたはドラッグ＆ドロップで画像を追加
+                </p>
+              </div>
+            ) : (
+              <div className="relative inline-block">
+                <img
+                  src={referenceImagePreview}
+                  alt="参照画像"
+                  className="h-32 w-auto object-cover rounded-lg border border-gray-200"
+                />
+                <button
+                  onClick={() => {
+                    setReferenceImage(null);
+                    setReferenceImagePreview(null);
+                  }}
+                  className="absolute -top-2 -right-2 bg-white p-1.5 rounded-full shadow-md border border-gray-100 hover:bg-gray-50 text-red-500"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {error && (
+            <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100">
+              {error}
+            </div>
+          )}
+
+          <button
+            onClick={handleGenerate}
+            disabled={loading || (!clubName && !tool1 && !tool2 && !referenceImage)}
+            className="w-full py-4 bg-black text-white rounded-xl font-medium flex items-center justify-center space-x-2 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>生成中...</span>
+              </>
+            ) : (
+              <>
+                <Wand2 className="w-5 h-5" />
+                <span>AIでイラストを生成</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* 結果表示エリア */}
+        {generatedImages.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
+            {generatedImages.map((item, index) => (
+              <div key={index} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center space-y-4">
+                <h3 className="text-sm font-medium text-gray-700 w-full text-center truncate" title={item.text}>
+                  {item.text}
+                </h3>
+                <div className="relative w-full aspect-square rounded-xl overflow-hidden border-2 border-gray-100 bg-white flex items-center justify-center p-2">
+                  <img
+                    src={item.url}
+                    alt={`生成されたイラスト: ${item.text}`}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <button
+                  onClick={() => handleDownload(item.url, item.text, index)}
+                  className="w-full py-2 bg-white border-2 border-black text-black rounded-lg text-sm font-medium flex items-center justify-center space-x-2 hover:bg-gray-50 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>保存</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}

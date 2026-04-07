@@ -1,0 +1,291 @@
+import React, { useState, useRef, useCallback } from 'react';
+import { UploadCloud, AlertTriangle, CheckCircle, Image as ImageIcon, Loader2, Info } from 'lucide-react';
+
+const App = () => {
+  const [file, setFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile && selectedFile.type.startsWith('image/')) {
+      processFile(selectedFile);
+    } else {
+      setError("画像ファイルを選択してください。");
+    }
+  };
+
+  const processFile = (selectedFile) => {
+    setFile(selectedFile);
+    setError(null);
+    setResult(null);
+    
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPreviewUrl(reader.result);
+    };
+    reader.readAsDataURL(selectedFile);
+  };
+
+  const onDragOver = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const onDragLeave = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const onDrop = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFile = e.dataTransfer.files[0];
+      if (droppedFile.type.startsWith('image/')) {
+        processFile(droppedFile);
+      } else {
+        setError("画像ファイルのみアップロード可能です。");
+      }
+    }
+  }, []);
+
+  const clearSelection = () => {
+    setFile(null);
+    setPreviewUrl(null);
+    setResult(null);
+    setError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const fetchWithRetry = async (url, options, retries = 5) => {
+    const delays = [1000, 2000, 4000, 8000, 16000];
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          if (response.status === 429 || response.status >= 500) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+        }
+        return response;
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        await new Promise(res => setTimeout(res, delays[i]));
+      }
+    }
+  };
+
+  const analyzeImage = async () => {
+    if (!previewUrl) return;
+
+    setLoading(true);
+    setResult(null);
+    setError(null);
+
+    const apiKey = ""; // 実行環境で提供されます
+
+    try {
+      const prompt = `
+        この画像が既存の著作物（アニメ、漫画、映画、有名キャラクター、商標、著名な美術品や写真など）である、または強く類似しており著作権侵害の可能性が高いかを判定してください。
+        法的な断定は不要ですが、一般的な視点で見て可能性が高いかどうかを判断してください。
+        以下のJSONフォーマットで返してください。
+        {
+          "is_infringing_likely": true または false,
+          "reason": "判定理由（日本語で具体的に）",
+          "possible_sources": ["考えられる元ネタや作品名（なければ空配列）"]
+        }
+      `;
+
+      const base64Data = previewUrl.split(',')[1];
+      const mimeType = previewUrl.match(/[^:]\w+\/[\w-+\d.]+(?=;|,)/)[0];
+
+      const payload = {
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: prompt },
+              { inlineData: { mimeType: mimeType, data: base64Data } }
+            ]
+          }
+        ],
+        generationConfig: {
+          responseMimeType: "application/json"
+        }
+      };
+
+      const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`サーバーエラーが発生しました。`);
+      }
+
+      const data = await response.json();
+      let textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      if (textResponse) {
+        // Markdown記法が含まれている場合を除去
+        textResponse = textResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        setResult(JSON.parse(textResponse));
+      } else {
+        throw new Error("解析結果を取得できませんでした。");
+      }
+
+    } catch (err) {
+      setError("AIによる画像解析中にエラーが発生しました。時間を置いて再度お試しください。");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 sm:p-6 md:p-8 flex flex-col items-center">
+      <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+        
+        {/* ヘッダー */}
+        <div className="bg-indigo-600 p-6 text-white text-center">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center justify-center gap-2">
+            <ImageIcon className="w-8 h-8" />
+            AI 著作権チェッカー
+          </h1>
+          <p className="text-indigo-100 text-sm sm:text-base">
+            画像をアップロードして、著作権侵害の可能性をAIが判定します。
+          </p>
+        </div>
+
+        <div className="p-6">
+          {/* ドラッグ＆ドロップエリア */}
+          {!previewUrl ? (
+            <div 
+              className={`border-4 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${isDragging ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 hover:border-indigo-400 hover:bg-gray-50'}`}
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
+              onDrop={onDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <UploadCloud className={`w-16 h-16 mx-auto mb-4 ${isDragging ? 'text-indigo-500' : 'text-gray-400'}`} />
+              <p className="text-lg font-medium text-gray-700 mb-2">
+                画像をドラッグ＆ドロップ
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                または、クリックしてファイルを選択
+              </p>
+              <span className="inline-block bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg font-medium text-sm">
+                ファイルを選択
+              </span>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept="image/*" 
+                onChange={handleFileChange} 
+              />
+            </div>
+          ) : (
+            /* プレビューエリア */
+            <div className="flex flex-col items-center">
+              <div className="relative w-full max-w-md rounded-xl overflow-hidden shadow-md border border-gray-200 mb-6 bg-gray-100">
+                <img src={previewUrl} alt="Preview" className="w-full h-auto max-h-80 object-contain mx-auto" />
+              </div>
+              
+              <div className="flex gap-4 w-full justify-center">
+                <button 
+                  onClick={clearSelection}
+                  disabled={loading}
+                  className="px-6 py-3 rounded-xl font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors disabled:opacity-50"
+                >
+                  キャンセル
+                </button>
+                <button 
+                  onClick={analyzeImage}
+                  disabled={loading}
+                  className="px-6 py-3 rounded-xl font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-md flex items-center gap-2 disabled:opacity-50 min-w-[160px] justify-center"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      判定中...
+                    </>
+                  ) : (
+                    "AIで判定する"
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* エラー表示 */}
+          {error && (
+            <div className="mt-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-md flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
+          {/* 結果表示 */}
+          {result && (
+            <div className={`mt-8 p-6 rounded-xl border ${result.is_infringing_likely ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+              <div className="flex items-center gap-3 mb-4">
+                {result.is_infringing_likely ? (
+                  <AlertTriangle className="w-8 h-8 text-red-600" />
+                ) : (
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                )}
+                <h2 className={`text-xl font-bold ${result.is_infringing_likely ? 'text-red-800' : 'text-green-800'}`}>
+                  {result.is_infringing_likely ? '著作権侵害の可能性が高いです' : '著作権侵害の可能性は低いです'}
+                </h2>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">判定理由</h3>
+                  <p className="text-gray-800 bg-white p-4 rounded-lg border border-gray-100 shadow-sm leading-relaxed">
+                    {result.reason}
+                  </p>
+                </div>
+                
+                {result.possible_sources && result.possible_sources.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">関連する可能性がある作品</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {result.possible_sources.map((source, idx) => (
+                        <span key={idx} className="bg-white border border-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm shadow-sm">
+                          {source}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 免責事項 */}
+          <div className="mt-8 flex items-start gap-2 text-xs text-gray-400 justify-center">
+            <Info className="w-4 h-4 flex-shrink-0" />
+            <p>
+              この結果はAIモデルによる推測であり、法的な正確性を保証するものではありません。実際の著作権に関する判断は、法律の専門家にご相談ください。
+            </p>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;

@@ -1,0 +1,323 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { Sparkles, Moon, Sun, Camera, RefreshCw, Globe, Stars } from 'lucide-react';
+
+const TAROT_CARDS = [
+  "愚者", "魔術師", "女教皇", "女帝", "皇帝", "教皇", "恋人", "戦車", "力", "隠者",
+  "運命の輪", "正義", "吊るされた男", "死神", "節制", "悪魔", "塔", "星", "月", "太陽", "審判", "世界"
+];
+
+const App = () => {
+  const [activeTab, setActiveTab] = useState('comprehensive');
+  const [inputText, setInputText] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [name, setName] = useState('');
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imageBase64, setImageBase64] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState('');
+  const [summary, setSummary] = useState('');
+  const [summarizing, setSummarizing] = useState(false);
+  const [drawnCard, setDrawnCard] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [starPositions, setStarPositions] = useState([]);
+  const fileInputRef = useRef(null);
+
+  // 背景の星を生成
+  useEffect(() => {
+    const stars = Array.from({ length: 50 }).map(() => ({
+      top: `${Math.random() * 100}%`,
+      left: `${Math.random() * 100}%`,
+      animationDuration: `${Math.random() * 3 + 2}s`,
+      animationDelay: `${Math.random() * 2}s`,
+    }));
+    setStarPositions(stars);
+  }, []);
+
+  const callGeminiAPI = async (prompt, base64Data = null) => {
+    const apiKey = "";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+    const currentDate = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const payload = {
+      contents: [{
+        role: "user",
+        parts: base64Data
+          ? [{ text: prompt }, { inlineData: { mimeType: "image/jpeg", data: base64Data.split(',')[1] } }]
+          : [{ text: prompt }]
+      }],
+      systemInstruction: {
+        parts: [{ text: `あなたは世界トップクラスの占い師です。神秘的で、かつ相談者に寄り添うような温かい言葉遣いで、日本語で占いの結果を伝えてください。プロンプトで指定された特定の占術のみを用いて回答してください。他の占術を勝手に混ぜないでください（総合占いの場合は除く）。\n\n【重要】アスタリスク（*）やシャープ（#）などのマークダウン記号は絶対に使用しないでください。見出しや強調したいお題（キーワード）は、必ず《 》で囲んで出力してください。\n\n【超重要】時期について言及する際は、「今年」「来年」といった相対的な表現は一切使わず、「2026年」のように必ず西暦で具体的に明記してください。本日は${currentDate}です。` }]
+      }
+    };
+
+    let retries = 5, delay = 1000;
+    while (retries > 0) {
+      try {
+        const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || "啓示を受け取れませんでした。";
+      } catch (error) {
+        retries--;
+        if (retries === 0) return "宇宙のノイズが強く、結果を読み取れませんでした。";
+        await new Promise(res => setTimeout(res, delay));
+        delay *= 2;
+      }
+    }
+  };
+
+  const handlePredict = async () => {
+    setLoading(true); setResult(''); setSummary('');
+    let prompt = '';
+
+    if (activeTab === 'comprehensive') {
+      const card = TAROT_CARDS[Math.floor(Math.random() * TAROT_CARDS.length)];
+      const reversed = Math.random() > 0.5 ? "逆位置" : "正位置";
+      prompt = `生年月日「${birthDate || "不明"}」、名前「${name || "不明"}」、悩み「${inputText || "全体的な運勢"}」。
+タロット(「${card}」${reversed})、星占い、動物占い、四柱推命、姓名判断${imageBase64 ? "、画像占い" : ""}の【完全に共通する最も確かな運命】のみを断言して伝えてください。`;
+    } else if (activeTab === 'tarot') {
+      if (!drawnCard) {
+        const card = TAROT_CARDS[Math.floor(Math.random() * TAROT_CARDS.length)];
+        const reversed = Math.random() > 0.5 ? "逆位置" : "正位置";
+        setDrawnCard(`${card}（${reversed}）`);
+        prompt = `タロット「${card}」の「${reversed}」。悩みは「${inputText || "全体的な運勢"}」。他の占術は一切使わず、タロットカードの意味とアドバイスのみを伝えて。`;
+      } else {
+        prompt = `タロット「${drawnCard}」。悩み「${inputText || "全体的な運勢"}」。他の占術は一切使わず、タロットカードのみで詳しく占ってください。`;
+      }
+    } else if (activeTab === 'astrology') {
+      prompt = `生年月日「${birthDate || "不明"}」、悩み「${inputText || "全体的な運勢"}」。他の占術は一切使わず、六星占術・西洋占星術のみで占って。`;
+    } else if (activeTab === 'animal') {
+      prompt = `生年月日「${birthDate || "不明"}」、悩み「${inputText || "全体的な運勢"}」。他の占術は一切使わず、動物占いのみで本質と運勢を占って。`;
+    } else if (activeTab === 'four_pillars') {
+      prompt = `生年月日「${birthDate || "不明"}」、悩み「${inputText || "全体的な運勢"}」。他の占術は一切使わず、四柱推命のみで運勢を占って。`;
+    } else if (activeTab === 'name_judgment') {
+      prompt = `名前「${name || "不明"}」、悩み「${inputText || "全体的な運勢"}」。他の占術は一切使わず、姓名判断のみで運命と性格を占って。`;
+    } else if (activeTab === 'daily_horoscope') {
+      prompt = `今日の12星座ランキング（一言付き）と、生年月日「${birthDate || "不明"}」から特定した星座の詳しい運勢を占って。他の占術は混ぜず、西洋占星術のみを使用してください。`;
+    } else if (activeTab === 'image') {
+      if (!imageBase64) { setResult("画像をアップロードしてください。"); setLoading(false); return; }
+      prompt = `この画像からインスピレーションを得て占って。悩みは「${inputText || "全体的な運勢"}」。他の占術の知識は使わず、手相・人相・画像からの直感のみで回答して。`;
+    }
+
+    const aiResponse = await callGeminiAPI(prompt, (activeTab === 'image' || activeTab === 'comprehensive') ? imageBase64 : null);
+    setResult(aiResponse); setLoading(false);
+  };
+
+  const handleSummarize = async () => {
+    if (!result) return;
+    setSummarizing(true);
+    const summaryResponse = await callGeminiAPI(`以下の占い結果を3行程度で要約してください。\n\n${result}`);
+    setSummary(summaryResponse); setSummarizing(false);
+  };
+
+  const formatText = (text) => {
+    const noAsterisk = text.replace(/\*/g, '');
+    const parts = noAsterisk.split(/(《.*?》)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith('《') && part.endsWith('》')) {
+        return <strong key={index} className="text-amber-300 text-lg font-bold block mt-4 mb-2 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">{part.slice(1, -1)}</strong>;
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
+
+  const processImage = (file) => {
+    setSelectedImage(URL.createObjectURL(file));
+    const reader = new FileReader();
+    reader.onloadend = () => setImageBase64(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault(); setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) processImage(file);
+  };
+
+  const tabs = [
+    { id: 'comprehensive', icon: <Globe className="w-4 h-4" />, label: '総合' },
+    { id: 'tarot', icon: null, label: 'タロット' },
+    { id: 'astrology', icon: null, label: '星占い・六星' },
+    { id: 'animal', icon: null, label: '動物占い' },
+    { id: 'four_pillars', icon: null, label: '四柱推命' },
+    { id: 'name_judgment', icon: null, label: '姓名判断' },
+    { id: 'daily_horoscope', icon: null, label: '今日の運勢' },
+    { id: 'image', icon: null, label: '画像・手相' },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#050510] text-slate-200 font-sans p-4 sm:p-8 flex flex-col items-center relative overflow-hidden">
+      <style>{`
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+        @keyframes flipIn { 0% { transform: perspective(1000px) rotateY(-90deg) scale(0.9); opacity: 0; } 100% { transform: perspective(1000px) rotateY(0deg) scale(1); opacity: 1; } }
+        @keyframes slideUpFade { 0% { transform: translateY(30px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+        @keyframes mysticalGlow { 0%, 100% { box-shadow: 0 0 15px 2px rgba(245, 158, 11, 0.4); } 50% { box-shadow: 0 0 30px 8px rgba(245, 158, 11, 0.8); } }
+        @keyframes orbMove1 { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(15vw, 10vh) scale(1.3); } }
+        @keyframes orbMove2 { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(-15vw, -10vh) scale(1.2); } }
+        @keyframes twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; box-shadow: 0 0 5px #fff; } }
+        @keyframes spinSlow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .anim-float { animation: float 4s ease-in-out infinite; }
+        .anim-float-delayed { animation: float 4s ease-in-out 2s infinite; }
+        .anim-flip { animation: flipIn 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .anim-slide-up { animation: slideUpFade 0.8s ease-out forwards; }
+        .anim-glow { animation: mysticalGlow 3s infinite; }
+        .spin-slow { animation: spinSlow 8s linear infinite; }
+        
+        /* 神秘的な背景オーブ */
+        .orb-1 { position: absolute; top: -20%; left: -10%; width: 60vw; height: 60vw; border-radius: 50%; background: radial-gradient(circle, rgba(79,70,229,0.15) 0%, transparent 70%); animation: orbMove1 20s infinite alternate ease-in-out; pointer-events: none; }
+        .orb-2 { position: absolute; bottom: -20%; right: -10%; width: 50vw; height: 50vw; border-radius: 50%; background: radial-gradient(circle, rgba(147,51,234,0.15) 0%, transparent 70%); animation: orbMove2 25s infinite alternate-reverse ease-in-out; pointer-events: none; }
+        .orb-3 { position: absolute; top: 30%; left: 30%; width: 40vw; height: 40vw; border-radius: 50%; background: radial-gradient(circle, rgba(245,158,11,0.08) 0%, transparent 70%); animation: orbMove1 30s infinite alternate ease-in-out; pointer-events: none; }
+      `}</style>
+
+      {/* 背景エフェクト */}
+      <div className="orb-1" />
+      <div className="orb-2" />
+      <div className="orb-3" />
+      {starPositions.map((style, i) => (
+        <div key={i} className="absolute w-1 h-1 bg-white rounded-full" style={{ ...style, animation: `twinkle ${style.animationDuration} infinite ${style.animationDelay}` }} />
+      ))}
+
+      {/* メインコンテナ (グラスモーフィズム) */}
+      <div className="relative z-10 max-w-3xl w-full bg-slate-900/60 backdrop-blur-xl rounded-3xl shadow-[0_0_50px_rgba(79,70,229,0.2)] overflow-hidden border border-slate-700/50 transition-all duration-500">
+        
+        {/* Header */}
+        <div className="relative p-8 text-center border-b border-indigo-500/30 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/50 via-purple-900/50 to-indigo-900/50 mix-blend-overlay"></div>
+          <h1 className="relative z-10 text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-amber-500 flex items-center justify-center gap-3 drop-shadow-lg">
+            <Sparkles className="w-8 h-8 text-amber-400 anim-float" />
+            AI 神秘の館
+            <Moon className="w-8 h-8 text-amber-400 anim-float-delayed" />
+          </h1>
+          <p className="relative z-10 text-indigo-200 mt-3 text-sm tracking-widest opacity-80">最先端AIがあなたの運命を読み解きます</p>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex overflow-x-auto whitespace-nowrap scrollbar-hide bg-slate-950/40 p-2 gap-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); setResult(''); setSummary(''); if(tab.id !== 'tarot') setDrawnCard(''); }}
+              className={`flex-1 py-3 px-4 rounded-xl text-center font-medium text-sm sm:text-base transition-all duration-300 flex items-center justify-center gap-2 ${
+                activeTab === tab.id 
+                  ? 'bg-gradient-to-r from-indigo-600/80 to-purple-600/80 text-amber-300 shadow-[0_0_15px_rgba(79,70,229,0.5)] border border-indigo-400/50 scale-105' 
+                  : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border border-transparent'
+              }`}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div className="p-6 sm:p-8 space-y-6 relative">
+          
+          {/* Inputs Section */}
+          <div className="space-y-5 animate-fadeIn bg-slate-950/30 p-6 rounded-2xl border border-slate-800/50">
+            {activeTab === 'comprehensive' && <p className="text-amber-300/80 text-sm text-center mb-4 font-medium">全占術から共通する事実のみを導き出します。</p>}
+            {activeTab === 'daily_horoscope' && <p className="text-amber-300/80 text-sm text-center mb-4 font-medium">今日の12星座ランキングとあなたの運勢を占います。</p>}
+            
+            {(activeTab === 'comprehensive' || activeTab === 'name_judgment') && (
+              <div>
+                <label className="block text-sm text-indigo-300 mb-2">お名前</label>
+                <input type="text" className="w-full bg-slate-900/80 border border-slate-700/80 rounded-xl p-4 text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all" value={name} onChange={(e) => setName(e.target.value)} placeholder="姓名" />
+              </div>
+            )}
+            
+            {(['comprehensive', 'astrology', 'animal', 'four_pillars', 'daily_horoscope'].includes(activeTab)) && (
+              <div>
+                <label className="block text-sm text-indigo-300 mb-2">生年月日</label>
+                <input type="date" className="w-full bg-slate-900/80 border border-slate-700/80 rounded-xl p-4 text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+              </div>
+            )}
+
+            {(activeTab === 'image' || activeTab === 'comprehensive') && (
+              <div className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer ${isDragging ? 'border-amber-500 bg-amber-500/10 scale-[1.02]' : 'border-indigo-500/30 hover:border-amber-400/50 bg-slate-900/50 hover:bg-slate-800/50'}`} onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }} onDrop={handleDrop} onClick={() => fileInputRef.current?.click()}>
+                <input type="file" ref={fileInputRef} onChange={(e) => e.target.files?.[0] && processImage(e.target.files[0])} accept="image/*" className="hidden" />
+                {selectedImage ? (
+                  <img src={selectedImage} alt="Preview" className="mx-auto max-h-40 rounded-xl shadow-lg border border-indigo-500/50" />
+                ) : (
+                  <div className="flex flex-col items-center justify-center space-y-3 text-indigo-300/70">
+                    <Camera className="w-10 h-10 anim-float" />
+                    <p className="font-medium">手相などの画像をドロップ</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'tarot' && (
+              <div className="text-center py-4">
+                {drawnCard ? (
+                  <div key={drawnCard} className="inline-block anim-flip relative group cursor-pointer">
+                    <div className="absolute inset-0 bg-amber-500/20 blur-xl rounded-2xl transition-all group-hover:bg-amber-500/40"></div>
+                    <div className="relative p-1 bg-gradient-to-br from-amber-400 via-indigo-600 to-purple-600 rounded-2xl shadow-2xl">
+                      <div className="bg-slate-900 py-8 px-10 rounded-xl border border-slate-800 h-full flex flex-col items-center justify-center">
+                        <Stars className="w-6 h-6 text-amber-500 mb-3 opacity-50" />
+                        <p className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-amber-200 to-amber-500 tracking-wider drop-shadow-sm">{drawnCard}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-indigo-300/70 py-10 flex flex-col items-center gap-4">
+                    <Moon className="w-12 h-12 opacity-50 anim-float" />
+                    AIがあなたの波動を感じ取り、カードを引きます。
+                  </p>
+                )}
+              </div>
+            )}
+
+            {activeTab !== 'daily_horoscope' && (
+              <textarea className="w-full bg-slate-900/80 border border-slate-700/80 rounded-xl p-4 text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all placeholder:text-slate-600" rows="3" placeholder="占いたい悩み事（省略可）" value={inputText} onChange={(e) => setInputText(e.target.value)} />
+            )}
+          </div>
+
+          {/* Action Button */}
+          <button onClick={handlePredict} disabled={loading || (activeTab === 'image' && !imageBase64)} className={`w-full relative overflow-hidden group bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 text-slate-950 font-bold text-xl py-5 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 ${loading || (activeTab === 'image' && !imageBase64) ? 'opacity-50 cursor-not-allowed' : 'anim-glow hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(245,158,11,0.6)]'}`}>
+            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+            {loading ? (
+              <>
+                <div className="relative w-6 h-6">
+                  <Stars className="absolute inset-0 w-6 h-6 spin-slow" />
+                  <RefreshCw className="absolute inset-0 w-6 h-6 animate-spin opacity-50" />
+                </div>
+                星の導きを解読中...
+              </>
+            ) : (
+              <><Sun className="w-6 h-6 relative z-10" /> <span className="relative z-10">{activeTab === 'comprehensive' ? 'すべての占術で導く' : '運命を読み解く'}</span></>
+            )}
+          </button>
+
+          {/* Result Area */}
+          {result && (
+            <div className="mt-10 p-1 bg-gradient-to-br from-indigo-500 via-purple-500 to-amber-500 rounded-2xl anim-slide-up shadow-2xl">
+              <div className="bg-slate-950/90 backdrop-blur-md rounded-xl p-6 sm:p-8 h-full">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-indigo-500/30 pb-4">
+                  <h3 className="text-2xl font-bold text-amber-400 flex items-center gap-3 drop-shadow-md">
+                    <Sparkles className="w-6 h-6 text-amber-300" /> 導かれた運命
+                  </h3>
+                  <button onClick={handleSummarize} disabled={summarizing} className="bg-indigo-900/50 hover:bg-indigo-800/80 text-amber-300 px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 disabled:opacity-50 border border-indigo-500/50 hover:border-amber-500/50 hover:shadow-[0_0_15px_rgba(79,70,229,0.5)]">
+                    {summarizing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} 要約する
+                  </button>
+                </div>
+
+                {summary && (
+                  <div className="mb-8 p-5 bg-gradient-to-r from-indigo-900/40 to-purple-900/40 border border-indigo-400/40 rounded-xl anim-slide-up shadow-inner relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-amber-400"></div>
+                    <h4 className="text-sm font-bold text-indigo-200 mb-3 flex items-center gap-2"><Moon className="w-4 h-4" /> 要約</h4>
+                    <div className="text-slate-100 leading-relaxed whitespace-pre-wrap text-lg font-medium">{formatText(summary)}</div>
+                  </div>
+                )}
+
+                <div className="text-slate-300 leading-loose whitespace-pre-wrap text-[15px] sm:text-base">
+                  {formatText(result)}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;

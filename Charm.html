@@ -1,0 +1,456 @@
+import React, { useState, useRef } from 'react';
+import { UploadCloud, Image as ImageIcon, Download, Edit2, X, Sparkles, Loader2, AlertCircle, Palette, Smile } from 'lucide-react';
+
+export default function App() {
+  const [baseImage, setBaseImage] = useState(null);
+  const [prompt, setPrompt] = useState('猫の顔');
+  const [styleLevel, setStyleLevel] = useState(5);
+  const [expression, setExpression] = useState('');
+  const [generatedImages, setGeneratedImages] = useState([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState('');
+  const [modalImage, setModalImage] = useState(null);
+  
+  const fileInputRef = useRef(null);
+  const abortControllerRef = useRef(null);
+
+  const expressions = [
+    { id: '', label: '指定なし', desc: '' },
+    { id: 'smile', label: '笑顔', desc: '笑顔でハッピーな表情。 (Smiling, happy expression.)' },
+    { id: 'angry', label: '怒り', desc: '怒った表情。 (Angry expression.)' },
+    { id: 'sad', label: '悲しみ', desc: '悲しい表情、泣いている表情。 (Sad, crying expression.)' },
+    { id: 'surprised', label: '驚き', desc: '驚いた表情。 (Surprised expression.)' },
+    { id: 'wink', label: 'ウインク', desc: 'ウインクしている表情。 (Winking expression.)' },
+    { id: 'sleep', label: '眠り', desc: '目を閉じて眠っている表情。 (Sleeping, eyes closed expression.)' }
+  ];
+
+  const styles = [
+    { id: 'simple', label: 'シンプル・ロゴ風', desc: 'シンプルでおしゃれなイラスト・ロゴ風の線画。過度なリアルさは避ける。 (Simple, elegant illustration, vector art style, clean logo icon style.)' },
+    { id: 'anime', label: 'アニメ・ちびキャラ風', desc: 'シンプルで可愛い漫画・アニメ風（デフォルメ・ちびキャラ風）の線画。 (Cute anime/manga style, 2D simple cartoon, chibi outline.)' },
+    { id: 'sketch', label: '手描きスケッチ風', desc: '温かみのある手描きスケッチ風の線画。少しラフなタッチ。 (Hand-drawn sketch style, rough lines, warm and cozy feel.)' },
+    { id: 'geometric', label: '幾何学的・モダン', desc: '直線や円を基調とした幾何学的でモダンな線画。スタイリッシュ。 (Geometric shapes, modern abstract line art, sharp and clean lines.)' },
+    { id: 'elegant', label: 'エレガント・装飾的', desc: '繊細でエレガントな、装飾的で細かい線画。 (Elegant, ornate, decorative line art, detailed and intricate.)' }
+  ];
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      processFile(file);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      processFile(file);
+    }
+  };
+
+  const clearBaseImage = (e) => {
+    e.stopPropagation();
+    setBaseImage(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const resizeImage = (dataUrl, maxWidth, maxHeight) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.src = dataUrl;
+    });
+  };
+
+  const processFile = (file) => {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const resized = await resizeImage(reader.result, 512, 512);
+      setBaseImage(resized);
+      setError('');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setIsGenerating(false);
+      setGenerationProgress(0);
+      setError('生成を中止しました。');
+    }
+  };
+
+  const fetchWithRetry = async (url, options, retries = 5, signal) => {
+    const delays = [1000, 2000, 4000, 8000, 16000];
+    for (let i = 0; i < retries; i++) {
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+      try {
+        const response = await fetch(url, { ...options, signal });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return await response.json();
+      } catch (e) {
+        if (e.name === 'AbortError') throw e;
+        if (i === retries - 1) throw e;
+        await new Promise((resolve, reject) => {
+          const timer = setTimeout(resolve, delays[i]);
+          if (signal) {
+            signal.addEventListener('abort', () => {
+              clearTimeout(timer);
+              reject(new DOMException('Aborted', 'AbortError'));
+            }, { once: true });
+          }
+        });
+      }
+    }
+  };
+
+  const generateImages = async () => {
+    if (!prompt.trim() && !baseImage) {
+      setError('元となる画像かコメント（デザインの指示）のどちらかを入力してください。');
+      return;
+    }
+
+    setIsGenerating(true);
+    setGenerationProgress(0);
+    setError('');
+    setGeneratedImages([null, null, null]);
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+    const apiKey = ""; 
+
+    let styleDesc = "";
+    if (styleLevel <= 3) {
+      styleDesc = "リアルで詳細なスケッチ風の線画。シャープな線。(Realistic and highly detailed sketch style, sharp lines, accurate proportions.)";
+    } else if (styleLevel <= 7) {
+      styleDesc = "標準的でシンプルなイラスト風の線画。丸みを帯びないスタイリッシュな線。(Standard clean illustration style, stylish and sharp lines, NOT rounded, NOT cute.)";
+    } else {
+      styleDesc = "デフォルメされた、シャープでクールな漫画風の線画。可愛い要素や丸みは完全に排除してください。(Highly stylized, cool manga style, sharp and edgy outline. ABSOLUTELY NOT cute, NOT rounded.)";
+    }
+
+    const expDesc = expressions.find(e => e.id === expression)?.desc || '';
+
+    let finalPrompt = prompt || "ワンポイントチャームのデザイン。";
+    if (expDesc) {
+      finalPrompt += ` キャラクターの表情: ${expDesc}`;
+    }
+    finalPrompt += ` ${styleDesc}`;
+    finalPrompt += " 完全に白背景で、黒い線のみを使用してください。影や色は絶対につけないでください。丸みや可愛さを排除した、シャープで洗練されたデザインにしてください。";
+    finalPrompt += " (Strictly black line art on a pure white background, NO shading, NO colors, monochrome outline only. Sharp edges, stylish, NOT cute, NOT rounded.)";
+    finalPrompt += " (DO NOT include any text, letters, or words in the image. Pure design only.)";
+
+    const parts = [{ text: finalPrompt }];
+
+    if (baseImage) {
+      const base64Data = baseImage.split(',')[1];
+      const mimeType = baseImage.split(';')[0].split(':')[1];
+      parts.push({ inlineData: { mimeType, data: base64Data } });
+    }
+
+    const payload = {
+      contents: [{ role: "user", parts }],
+      generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
+    };
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+
+    try {
+      const promises = [0, 1, 2].map(async (i) => {
+        try {
+          const result = await fetchWithRetry(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }, 5, signal);
+          
+          if (result.error) {
+            console.error("API Error:", result.error);
+            return null;
+          }
+
+          const base64 = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+          if (base64 && !signal.aborted) {
+            const imgUrl = `data:image/jpeg;base64,${base64}`;
+            setGeneratedImages(prev => {
+              const next = [...prev];
+              next[i] = imgUrl;
+              return next;
+            });
+            setGenerationProgress(prev => prev + 1);
+            return imgUrl;
+          }
+        } catch (e) {
+          if (e.name !== 'AbortError') console.error(e);
+        }
+        return null;
+      });
+
+      const results = await Promise.all(promises);
+      const successCount = results.filter(r => r !== null).length;
+
+      if (successCount === 0 && !signal.aborted) {
+        setError('生成に失敗しました。');
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error(err);
+        setError('通信エラーが発生しました。');
+      }
+    } finally {
+      if (abortControllerRef.current?.signal === signal) {
+        setIsGenerating(false);
+        setGenerationProgress(0);
+        abortControllerRef.current = null;
+      }
+    }
+  };
+
+  const handleDownload = (imgUrl) => {
+    const link = document.createElement('a');
+    link.href = imgUrl;
+    link.download = `charm_lineart_${Date.now()}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleEditFromPreview = (imgUrl) => {
+    setBaseImage(imgUrl);
+    setModalImage(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
+      <div className="max-w-5xl mx-auto p-4 md:p-8">
+        <header className="mb-8 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-800 flex items-center justify-center gap-2 mb-2">
+            <Sparkles className="w-8 h-8 text-gray-600" />
+            AI 線画チャームメーカー
+          </h1>
+        </header>
+
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+          
+          <div className="md:col-span-5 space-y-6">
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-700">
+                <ImageIcon className="w-5 h-5 text-gray-500" />
+                基本画像 (任意)
+              </h2>
+              
+              <div 
+                className={`relative border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-colors ${
+                  isDragging ? 'border-gray-500 bg-gray-100' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                } ${baseImage ? 'border-none p-0 overflow-hidden bg-white' : 'min-h-[200px]'}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => !baseImage && fileInputRef.current?.click()}
+              >
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  accept="image/*" 
+                  className="hidden" 
+                />
+                
+                {baseImage ? (
+                  <div className="relative w-full group">
+                    <img src={baseImage} alt="Base" className="w-full h-auto object-contain max-h-64 mx-auto rounded-2xl bg-white" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl">
+                      <button 
+                        onClick={clearBaseImage}
+                        className="bg-white/90 text-red-500 p-2 rounded-full hover:bg-white transition-colors"
+                      >
+                        <X className="w-6 h-6" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <UploadCloud className="w-12 h-12 text-gray-400 mb-3" />
+                    <p className="text-sm text-gray-500 font-medium">ドラッグ＆ドロップ（PC/モバイル対応）</p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-700">
+                <Palette className="w-5 h-5 text-gray-500" />
+                画風・スタイル (リアル ←→ デフォルメ)
+              </h2>
+              <div className="space-y-4">
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={styleLevel}
+                  onChange={(e) => setStyleLevel(parseInt(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-gray-800"
+                />
+                <div className="flex justify-between text-sm text-gray-500 font-medium">
+                  <span>リアル (1)</span>
+                  <span>現在のレベル: {styleLevel}</span>
+                  <span>デフォルメ (10)</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-700">
+                <Smile className="w-5 h-5 text-gray-500" />
+                表情 (キャラクター用)
+              </h2>
+              <select
+                value={expression}
+                onChange={(e) => setExpression(e.target.value)}
+                className="w-full p-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-300 outline-none bg-gray-50 font-medium cursor-pointer"
+              >
+                {expressions.map(exp => (
+                  <option key={exp.id} value={exp.id}>{exp.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-700">
+                <Edit2 className="w-5 h-5 text-gray-500" />
+                コメント・指示 (任意)
+              </h2>
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="例：星の形の魔法陣..."
+                className="w-full h-24 p-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-gray-300 resize-none outline-none"
+              />
+            </div>
+
+            {error && (
+              <div className="bg-red-50 text-red-600 p-4 rounded-2xl flex items-start gap-3 border border-red-100">
+                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <p className="text-sm">{error}</p>
+              </div>
+            )}
+
+            {isGenerating ? (
+              <button
+                onClick={handleCancel}
+                className="w-full py-4 rounded-full font-bold text-white text-lg flex items-center justify-center gap-2 transition-all shadow-md bg-red-500 hover:bg-red-600 active:scale-95"
+              >
+                <X className="w-6 h-6" />
+                生成を中止する ({generationProgress}/3完了)
+              </button>
+            ) : (
+              <button
+                onClick={generateImages}
+                className="w-full py-4 rounded-full font-bold text-white text-lg flex items-center justify-center gap-2 transition-all shadow-md bg-gray-800 hover:bg-gray-900 active:scale-95"
+              >
+                <Sparkles className="w-6 h-6" />
+                線画を生成する
+              </button>
+            )}
+          </div>
+
+          <div className="md:col-span-7">
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200 min-h-full">
+              <h2 className="text-xl font-semibold mb-6 text-gray-700">生成結果</h2>
+              
+              {(!isGenerating && generatedImages.length === 0) ? (
+                <div className="h-64 flex flex-col items-center justify-center text-gray-400 text-center">
+                  <ImageIcon className="w-16 h-16 mb-4 opacity-20" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {[0, 1, 2].map((i) => {
+                    const imgUrl = generatedImages[i];
+                    if (imgUrl) {
+                      return (
+                        <div 
+                          key={i} 
+                          className="group relative aspect-square rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-md transition-shadow border border-gray-200 bg-white"
+                          onClick={() => setModalImage(imgUrl)}
+                        >
+                          <img src={imgUrl} alt={`Generated ${i + 1}`} className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105 p-2" />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                            <span className="bg-white/90 text-gray-800 text-sm font-semibold px-3 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0 shadow-sm border border-gray-200">
+                              拡大
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    } else if (isGenerating) {
+                      return (
+                        <div key={i} className={`aspect-square bg-gray-50 rounded-2xl flex flex-col items-center justify-center border border-gray-200 animate-pulse`}>
+                          <Loader2 className="w-8 h-8 text-gray-500 animate-spin mb-2" />
+                        </div>
+                      );
+                    } else {
+                      return null;
+                    }
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {modalImage && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setModalImage(null)}>
+          <div className="bg-white rounded-3xl overflow-hidden max-w-lg w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="relative bg-white p-4">
+              <img src={modalImage} alt="Preview" className="w-full h-auto object-contain max-h-[60vh]" />
+              <button onClick={() => setModalImage(null)} className="absolute top-4 right-4 bg-gray-100 p-2 rounded-full hover:bg-gray-200 border border-gray-300">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 bg-gray-50 flex flex-col sm:flex-row gap-3 border-t border-gray-200">
+              <button onClick={() => handleDownload(modalImage)} className="flex-1 py-3 bg-white text-gray-800 rounded-xl font-medium flex justify-center gap-2 border border-gray-300 hover:bg-gray-50">
+                <Download className="w-5 h-5" /> 保存
+              </button>
+              <button onClick={() => handleEditFromPreview(modalImage)} className="flex-1 py-3 bg-gray-800 text-white rounded-xl font-medium flex justify-center gap-2 hover:bg-gray-900">
+                <Edit2 className="w-5 h-5" /> 再生成
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
