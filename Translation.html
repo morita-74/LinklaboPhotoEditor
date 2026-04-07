@@ -226,11 +226,19 @@
             for (let i = 0; i < 3; i++) {
                 try {
                     const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    if (!res.ok) throw new Error();
                     const data = await res.json();
-                    return data.text || data.candidates?.[0]?.content?.parts?.[0]?.text || "翻訳エラー";
+                    if (!res.ok) {
+                        const errMsg = data.details || data.error || "Internal Server Error";
+                        showError(`通信エラー (${res.status}): ${errMsg}`);
+                        return "翻訳に失敗しました";
+                    }
+                    return data.text || data.candidates?.[0]?.content?.parts?.[0]?.text || "翻訳内容を取得できませんでした";
                 } catch (e) {
-                    if (i === 2) throw e;
+                    if (i === 2) {
+                        console.error(e);
+                        showError("通信に失敗しました。接続を確認してください。");
+                        return "翻訳エラー";
+                    }
                     await new Promise(r => setTimeout(r, 1000));
                 }
             }
