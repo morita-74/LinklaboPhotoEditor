@@ -34,7 +34,7 @@
                     }
                 }
             }, [name, size, className]);
-            return <i ref={ref} data-lucide={name} className={className} style={ { width: size, height: size, display: 'inline-block' } }></i>;
+            return <i ref={ref} data-lucide={name.toLowerCase()} className={className} style={ { width: size, height: size, display: 'inline-block' } }></i>;
         };
 
         const Lucide = {
@@ -54,6 +54,8 @@
             RefreshCw: (props) => <Icon name="RefreshCw" {...props} />,
             Search: (props) => <Icon name="Search" {...props} />,
         };
+
+                const { UploadCloud, ImagePlus, Save, RefreshCw, Loader2, Sparkles, X, MessageSquare, Pencil, Upload, Download, Trash2, Edit, Search } = Lucide;
 
         // Main code
         

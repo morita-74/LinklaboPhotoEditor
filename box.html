@@ -34,8 +34,10 @@
                     }
                 }
             }, [name, size, className]);
-            return <i ref={ref} data-lucide={name} className={className} style={ { width: size, height: size, display: 'inline-block' } }></i>;
+            return <i ref={ref} data-lucide={name.toLowerCase()} className={className} style={{ width: size, height: size, display: 'inline-block' }}></i>;
         };
+
+        const generateId = () => Math.random().toString(36).substring(2, 9);
 
         const Lucide = {
             UploadCloud: (props) => <Icon name="UploadCloud" {...props} />,
@@ -54,6 +56,8 @@
             RefreshCw: (props) => <Icon name="RefreshCw" {...props} />,
             Search: (props) => <Icon name="Search" {...props} />,
         };
+
+                const { UploadCloud, ImagePlus, Save, RefreshCw, Loader2, Sparkles, X, MessageSquare, Pencil, Upload, Download, Trash2, Edit, Search } = Lucide;
 
         // Main code
         
@@ -144,7 +148,7 @@ function App() {
           generateSingleImage(fullPrompt)
         ];
         const results = await Promise.all(promises);
-        setPreviews(results.map(url => ({ id: crypto.randomUUID(), url })));
+        setPreviews(results.map(url => ({ id: generateId(), url })));
       } else {
         // Edit mode: Generate 3 variations based on reference image
         const promises = [
@@ -153,7 +157,7 @@ function App() {
           editSingleImage(referenceImage, prompt || "少しだけバリエーションを変えて")
         ];
         const results = await Promise.all(promises);
-        setPreviews(results.map(url => ({ id: crypto.randomUUID(), url })));
+        setPreviews(results.map(url => ({ id: generateId(), url })));
       }
     } catch (err) {
       setError(err.message || 'エラーが発生しました');
@@ -164,7 +168,7 @@ function App() {
 
   const handleSave = (imgUrl) => {
     setSavedImages(prev => [{
-      id: crypto.randomUUID(),
+      id: generateId(),
       url: imgUrl,
       comment: comment || 'コメントなし',
       date: new Date().toLocaleString()
