@@ -4,7 +4,7 @@
   "description": "Premium AI Photo Editor",
   "main": "index.html",
   "dependencies": {
-    "@google/generative-ai": "^0.3.1"
+    "@google/generative-ai": "^0.21.0"
   },
   "devDependencies": {
     "vercel": "^32.0.0"
