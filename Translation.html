@@ -228,7 +228,7 @@
                     const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!res.ok) throw new Error();
                     const data = await res.json();
-                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "翻訳エラー";
+                    return data.text || data.candidates?.[0]?.content?.parts?.[0]?.text || "翻訳エラー";
                 } catch (e) {
                     if (i === 2) throw e;
                     await new Promise(r => setTimeout(r, 1000));
