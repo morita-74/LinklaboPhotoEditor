@@ -228,16 +228,15 @@
                     const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     const data = await res.json();
                     if (!res.ok) {
-                        const errMsg = data.details || data.error || "Internal Server Error";
-                        showError(`通信エラー (${res.status}): ${errMsg}`);
-                        return `翻訳失敗 (${res.status}): ${errMsg}`;
+                        showError("翻訳に失敗しました。接続を確認してください。");
+                        return "翻訳失敗";
                     }
-                    return data.text || data.candidates?.[0]?.content?.parts?.[0]?.text || "翻訳内容を取得できませんでした";
+                    return data.text || data.candidates?.[0]?.content?.parts?.[0]?.text || "内容なし";
                 } catch (e) {
                     if (i === 2) {
                         console.error(e);
-                        showError("通信に失敗しました。接続を確認してください。");
-                        return `通信エラー: ${e.message}`;
+                        showError("通信エラーが発生しました。");
+                        return "エラー";
                     }
                     await new Promise(r => setTimeout(r, 1000));
                 }
