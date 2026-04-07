@@ -3,46 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>シンプル写真加工アプリ - OpenCV不要版</title>
+    <title>Linklabo Photo Editor - Premium AI Editor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/imagetracerjs@1.2.6/imagetracer_v1.2.6.min.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+        
+        :root {
+            --primary: #6366f1;
+            --secondary: #ec4899;
+            --bg-dark: #0f172a;
+            --card-glass: rgba(30, 41, 59, 0.7);
+            --border-glass: rgba(255, 255, 255, 0.1);
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.15) 0px, transparent 50%);
+            color: #f8fafc;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
+            overflow-x: hidden;
         }
+
         #app-container {
             width: 100%;
-            max-width: 1200px;
+            max-width: 1300px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            padding: 10px;
+            gap: 24px;
+            padding: 24px;
+            animation: fadeIn 0.8s ease-out;
         }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         @media (min-width: 1024px) {
             #app-container {
                 flex-direction: row;
-                align-items: flex-start;
+                align-items: stretch;
             }
         }
         
         #editor-canvas-wrapper {
             position: relative;
             flex-grow: 1;
-            background-color: #000;
-            border-radius: 12px;
+            background-color: #020617;
+            border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-            aspect-ratio: 16 / 9;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-glass);
             display: flex;
             justify-content: center;
             align-items: center;
+            transition: all 0.3s ease;
         }
         
         #editor-canvas {
@@ -51,14 +74,69 @@
             max-height: 100%;
             width: auto;
             height: auto;
-            background-color: #333;
-            cursor: default;
+            cursor: crosshair;
         }
         
+        .control-panel {
+            background: var(--card-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 24px;
+            border-radius: 20px;
+            border: 1px solid var(--border-glass);
+            width: 100%;
+            overflow-y: auto;
+            max-height: 90vh;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .premium-button {
+            position: relative;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            cursor: pointer;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+        }
+        .premium-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(99, 102, 241, 0.4);
+            filter: brightness(1.1);
+        }
+        .premium-button:active {
+            transform: translateY(0);
+        }
+
+        .tab-button {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #94a3b8;
+            transition: all 0.2s;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .tab-button.active {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: inset 0 0 0 1px var(--border-glass);
+        }
+        .tab-button:hover:not(.active) {
+            color: #cbd5e1;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
         .overlay-message {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(2, 6, 17, 0.9);
+            backdrop-filter: blur(8px);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -68,47 +146,86 @@
             text-align: center;
         }
 
-        .control-panel {
-            background: #1e1e1e;
-            padding: 20px;
+        /* ドラッグオーバーのビジュアルガイド */
+        #drop-zone-overlay {
+            position: absolute;
+            top: 10px; left: 10px; right: 10px; bottom: 10px;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
             border-radius: 12px;
-            border: 1px solid #333;
-            min-width: 300px;
-            overflow-y: auto;
-            max-height: 90vh;
-        }
-        
-        .tab-button {
-            padding: 10px 15px;
-            border-radius: 8px 8px 0 0;
-            border-bottom: 3px solid transparent;
-            font-weight: bold;
-            color: #999;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-        .tab-button.active {
-            color: #3b82f6;
-            border-color: #3b82f6;
-            background-color: #2a2a2a;
-        }
-        .tab-button:hover:not(.active) {
-            color: #bbb;
-            background-color: #222;
-        }
-        .tab-content {
+            background: rgba(99, 102, 241, 0.1);
+            backdrop-filter: blur(4px);
             display: none;
-            padding-top: 15px;
-            border-top: 1px solid #333;
+            justify-content: center;
+            align-items: center;
+            z-index: 55;
+            pointer-events: none;
+            flex-direction: column;
+            transition: all 0.3s;
         }
-        .tab-content.active {
-            display: block;
+        #drop-zone-overlay.drag-active {
+            display: flex;
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.2);
+            animation: pulse-border 1.5s infinite;
+        }
+        @keyframes pulse-border {
+            0% { transform: scale(0.98); opacity: 0.8; }
+            50% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.98); opacity: 0.8; }
         }
 
-        @keyframes flash-animation {
-            0% { opacity: 1; }
-            100% { opacity: 0; }
+        /* プリセットチップ */
+        .preset-chip {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-glass);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #cbd5e1;
         }
+        .preset-chip:hover {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        /* 検索バーのスタイル */
+        #feature-search {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-glass);
+            transition: all 0.3s;
+        }
+        #feature-search:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+
+        /* タブ固定 */
+        .sticky-tabs {
+            position: sticky;
+            top: -24px;
+            z-index: 30;
+            background: var(--bg-dark);
+            padding-top: 10px;
+            margin-top: -10px;
+        }
+
+        /* タブ表示制御 */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.4s ease-out; }
+        
+        /* 「すべて」表示モード時の特別ルール */
+        .all-mode .tab-content { 
+            display: block !important; 
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 20px;
+            margin-bottom: 30px;
+        }
+        .all-mode .tab-content:first-of-type { border-top: none; }
+
         .flash-overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -117,40 +234,141 @@
             pointer-events: none;
             z-index: 60;
         }
-        .flash-active {
-            animation: flash-animation 0.5s ease-out;
+        @keyframes flashEffect {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
         }
+        .flash-active { animation: flashEffect 0.5s ease-out; }
         
-        .radio-group input[type="radio"] {
-            display: none;
-        }
+        .radio-group input[type="radio"] { display: none; }
         .radio-group label {
             display: inline-block;
             cursor: pointer;
-            padding: 6px 12px;
-            border: 1px solid #444;
-            border-radius: 4px;
+            padding: 8px 12px;
+            border: 1px solid var(--border-glass);
+            border-radius: 8px;
             font-size: 0.75rem;
-            color: #ccc;
+            color: #94a3b8;
             transition: all 0.2s;
             text-align: center;
             flex: 1;
         }
         .radio-group input[type="radio"]:checked + label {
-            background-color: #ec4899;
+            background-color: var(--secondary);
             color: white;
-            border-color: #ec4899;
+            border-color: var(--secondary);
         }
+
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+
+        /* 履歴サムネイルのスタイル */
+        .history-item {
+            position: relative;
+            cursor: pointer;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            aspect-ratio: 1;
+            background: #000;
+        }
+        .history-item:hover { transform: scale(1.05); }
+        .history-item.active { border-color: var(--primary); }
+        .history-item img { width: 100%; height: 100%; object-fit: cover; }
+        .history-time {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            font-size: 10px;
+            padding: 2px 4px;
+            text-align: center;
+        }
+
+        .comparison-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: none;
+            z-index: 40;
+        }
+        .comparison-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            overflow: hidden;
+        }
+        #before-canvas {
+            display: block;
+            width: auto; height: auto;
+            max-width: 100%; max-height: 100%;
+            filter: brightness(0.7);
+        }
+        .comparison-slider {
+            position: absolute;
+            top: 0; bottom: 0; width: 4px;
+            background: white;
+            cursor: ew-resize;
+            pointer-events: auto;
+            z-index: 45;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        .comparison-slider::after {
+            content: "\2194";
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px; height: 40px;
+            background: white;
+            color: black;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .compare-label {
+            position: absolute;
+            top: 10px;
+            padding: 4px 12px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: white;
+            z-index: 46;
+        }
+        #before-label { left: 10px; }
+        #after-label { right: 10px; }
+
+        .split-active #comparison-container { display: block; pointer-events: auto; }
+        .split-active #comparison-slider { pointer-events: auto; }
     </style>
 </head>
 <body class="p-4">
 
     <div id="app-container">
         <div class="flex-1 w-full">
-            <div id="editor-canvas-wrapper">
-                <canvas id="editor-canvas"></canvas>
-                <div id="flash-effect" class="flash-overlay"></div>
-                <div id="status-overlay" class="overlay-message hidden">
+                <div id="editor-canvas-wrapper">
+                    <canvas id="editor-canvas"></canvas>
+                    
+                    <!-- 比較スライダーコンポーネント -->
+                    <div id="comparison-container" class="comparison-container">
+                        <div id="before-label" class="compare-label">BEFORE</div>
+                        <div id="after-label" class="compare-label">AFTER</div>
+                        <div id="comparison-slider" class="comparison-slider"></div>
+                        <div id="comparison-overlay" class="comparison-overlay">
+                            <canvas id="before-canvas"></canvas>
+                        </div>
+                    </div>
+
+                    <div id="drop-zone-overlay">
+                        <svg class="w-12 h-12 text-indigo-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                        <p class="text-indigo-200 font-bold">画像をここにドロップ</p>
+                    </div>
+                    <div id="flash-effect" class="flash-overlay"></div>
+                    <div id="status-overlay" class="overlay-message hidden">
                     <div class="animate-spin rounded-full h-12 w-12 border-4 border-t-4 border-blue-500 border-gray-600 mb-4"></div>
                     <h3 class="text-xl font-bold text-white mb-2" id="status-title">処理中...</h3>
                     <p id="status-text" class="text-gray-400 text-sm">しばらくお待ちください</p>
@@ -172,31 +390,48 @@
             </div>
         </div>
 
-        <div class="control-panel w-full lg:w-80">
-            <h2 class="text-xl font-bold mb-4 text-white border-b border-gray-700 pb-3">🎨 写真加工 & アート</h2>
-
-            <div class="flex border-b border-gray-700 mb-4 overflow-x-auto">
-                <button class="tab-button active flex-shrink-0" data-tab="upload">ファイル</button>
-                <button class="tab-button flex-shrink-0" data-tab="bg-remove">切り抜き</button>
-                <button class="tab-button flex-shrink-0" data-tab="adjustments">画像加工</button>
-                <button class="tab-button flex-shrink-0" data-tab="dither">ディザリング</button>
-                <button class="tab-button flex-shrink-0" data-tab="ai-line-art">AI線図</button>
-                <button class="tab-button flex-shrink-0" data-tab="filters">フィルタ</button>
-                <button class="tab-button flex-shrink-0" data-tab="ai-edit">AI加工</button>
+        <div class="control-panel lg:w-[400px]">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-pink-500 flex items-center justify-center shadow-lg">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                </div>
+                <h2 class="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                    Linklabo AI
+                </h2>
             </div>
 
-            <div id="tab-upload" class="tab-content active space-y-5">
+            <div class="mb-4 relative">
+                <input type="text" id="feature-search" placeholder="機能を検索 (例: AI, ぼかし, 線画...)" class="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-10 text-sm text-white focus:outline-none placeholder-gray-500">
+                <svg class="w-5 h-5 absolute left-3 top-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </div>
+
+            <div class="flex gap-1 bg-white/5 p-1 rounded-14 mb-6 overflow-x-auto no-scrollbar sticky-tabs">
+                <button class="tab-button" data-tab="all">すべて</button>
+                <button class="tab-button active" data-tab="recommended">✨ おすすめ</button>
+                <button class="tab-button" data-tab="upload">ファイル</button>
+                <button class="tab-button" data-tab="bg-remove">切り抜き/AI消去</button>
+                <button class="tab-button" data-tab="adjustments">加工/調整</button>
+                <button class="tab-button" data-tab="dither">ディザ</button>
+                <button class="tab-button" data-tab="filters">フィルタ</button>
+                <button class="tab-button" data-tab="ai-edit">AI生成</button>
+                <button class="tab-button" data-tab="history">履歴</button>
+            </div>
+            <div id="control-panel-body">
+            <div id="tab-upload" class="tab-content space-y-5">
                 <div>
                     <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">画像を読み込む</label>
                     <input type="file" id="image-upload-input" accept="image/*" class="block w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer border border-gray-700 rounded bg-gray-800">
                 </div>
-                <div class="mt-6 bg-gray-800 p-4 rounded border border-gray-700 text-center">
-                    <button id="btn-save-image" type="button" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded shadow-lg transition flex items-center justify-center gap-2">
+                <div class="mt-6 bg-white/5 p-4 rounded-xl border border-white/10 text-center">
+                    <button id="btn-save-image" type="button" class="w-full premium-button flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                         画像を保存 (PNG)
                     </button>
                 </div>
-                <div class="pt-4 border-t border-gray-700">
-                    <button id="btn-undo" class="w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition">元の画像に戻す</button>
+                <div class="pt-4 border-t border-white/10 flex gap-2">
+                    <button id="btn-undo" class="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-xl transition">元の画像に戻す</button>
+                    <button id="btn-compare-split" class="flex-1 bg-indigo-600/30 hover:bg-indigo-600/50 text-white font-bold py-2 px-4 rounded-xl transition border border-indigo-500/30">分割比較: OFF</button>
+                    <button id="btn-compare" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded-xl transition">長押し比較</button>
                 </div>
             </div>
 
@@ -223,10 +458,23 @@
                 </div>
 
                 <div class="mt-8 border-t border-gray-700 pt-5">
-                    <h3 class="text-sm font-bold text-white mb-2">AI物体消去</h3>
-                    <button id="btn-enable-inpaint" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded transition">消去モード開始</button>
-                    <button id="btn-cancel-inpaint" class="w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-4 rounded transition mt-2 hidden">キャンセル</button>
-                    <p id="inpaint-instruction" class="text-yellow-400 text-xs mt-2 hidden font-bold">ドラッグで範囲を選択してください</p>
+                    <h3 class="text-sm font-bold text-white mb-2 text-purple-400">高精度 AI物体消去 (ブラシ)</h3>
+                    <div class="space-y-4 bg-gray-800 p-3 rounded border border-gray-700">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block flex justify-between">
+                                ブラシサイズ: <span id="inpaint-brush-size-val" class="text-white">30</span>px
+                            </label>
+                            <input type="range" id="inpaint-brush-size" min="10" max="100" step="1" value="30" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500">
+                        </div>
+                        <button id="btn-enable-inpaint" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded transition">消去ブラシを開始</button>
+                        <div id="inpaint-controls" class="hidden space-y-2">
+                             <p class="text-yellow-400 text-[10px] font-bold">消したい対象をなぞってください</p>
+                             <div class="flex gap-2">
+                                 <button id="btn-apply-inpaint" class="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-2 rounded text-xs">AIで消去実行</button>
+                                 <button id="btn-cancel-inpaint" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-2 rounded text-xs">キャンセル</button>
+                             </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -261,11 +509,36 @@
                 </div>
 
                 <div class="border-t border-gray-700 pt-4">
-                    <h3 class="text-sm font-bold text-white mb-2">エフェクト</h3>
-                    <div class="flex gap-2">
-                        <button id="btn-blur" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded text-xs transition">ぼかし</button>
-                        <button id="btn-sharpen" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded text-xs transition">シャープ化</button>
+                    <h3 class="text-sm font-bold text-white mb-2">エフェクト調整</h3>
+                    <div class="space-y-4 bg-gray-800 p-3 rounded border border-gray-700">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block flex justify-between">ぼかし強度: <span id="blur-val" class="text-white">0</span></label>
+                            <input type="range" id="slider-blur" min="0" max="20" step="1" value="0" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-gray-400">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block flex justify-between">シャープ強度: <span id="sharpen-val" class="text-white">0</span></label>
+                            <input type="range" id="slider-sharpen" min="0" max="5" step="0.5" value="0" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-gray-400">
+                        </div>
+                        <div class="flex gap-2">
+                             <button id="btn-apply-effects" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-2 rounded text-xs">エフェクト適用</button>
+                             <button id="btn-ai-auto-fix" class="flex-1 bg-gradient-to-r from-teal-600 to-indigo-600 hover:brightness-110 text-white font-bold py-2 px-2 rounded text-xs transition shadow-lg">✨ AIにおまかせ補正</button>
+                        </div>
                     </div>
+                </div>
+
+                <div class="border-t border-gray-700 pt-4">
+                     <h3 class="text-sm font-bold text-white mb-2 text-indigo-400">マイスタイル (プリセット)</h3>
+                     <div class="space-y-3 bg-gray-800 p-3 rounded border border-gray-700">
+                         <div id="presets-container" class="flex flex-wrap gap-2 mb-2">
+                             <!-- プリセットがここに並ぶ -->
+                             <span class="text-[10px] text-gray-500 italic">保存されたプリセットはありません</span>
+                         </div>
+                         <button id="btn-save-preset" class="w-full bg-indigo-600/50 hover:bg-indigo-600 text-white font-bold py-2 px-2 rounded text-[10px] transition border border-indigo-500/30">今の設定を「マイスタイル」に保存</button>
+                         <div class="flex items-center gap-2 pt-2">
+                              <input type="checkbox" id="auto-apply-check" class="w-3 h-3 bg-gray-700 border-gray-600 rounded cursor-pointer">
+                              <label for="auto-apply-check" class="text-[10px] text-gray-400 cursor-pointer">新しい画像を読み込んだ時に最後に保存したスタイルを適用する</label>
+                         </div>
+                     </div>
                 </div>
 
                 <div class="border-t border-gray-700 pt-4">
@@ -320,7 +593,7 @@
                             <label for="dither-transparent-check" class="text-[11px] text-gray-300 cursor-pointer select-none">白色部分を透過する</label>
                         </div>
                     </div>
-                    <button id="btn-apply-dither" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 px-4 rounded mt-2 transition shadow-lg">ディザリングを実行</button>
+                    <button id="btn-apply-dither" class="w-full premium-button mt-4">ディザリングを実行</button>
                 </div>
 
                 <div class="mt-4 border-t border-gray-700 pt-4">
@@ -343,8 +616,18 @@
                 </div>
             </div>
 
-            <div id="tab-ai-line-art" class="tab-content space-y-5">
+            <div id="tab-ai-edit" class="tab-content space-y-5 border-t border-gray-700 pt-5">
                 <div>
+                    <h3 class="text-md font-bold text-white mb-2 text-purple-400">AIで自由に編集</h3>
+                    <p class="text-[10px] text-gray-400 mb-3">AIに指示を出して画像を書き換えます</p>
+                    <textarea id="ai-prompt-input" rows="3" class="w-full bg-gray-800 text-white text-sm border border-gray-600 rounded p-3 mb-3" placeholder="例: 夏の風景にして、空に花火を打ち上げて..."></textarea>
+                    <button id="btn-ai-generate" class="w-full premium-button flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        AIにお願いする
+                    </button>
+                </div>
+
+                <div class="mt-8 border-t border-gray-700 pt-5">
                     <h3 class="text-sm font-bold text-white mb-2 text-cyan-400">AI線図変換</h3>
                     <div class="space-y-4 bg-gray-800 p-3 rounded border border-gray-700">
                         <div>
@@ -357,7 +640,10 @@
                             </select>
                         </div>
                     </div>
-                    <button id="btn-ai-line-art" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-4 rounded mt-4 transition shadow-lg">AIで線図に変換</button>
+                    <button id="btn-ai-line-art" class="w-full premium-button mt-4 flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                        AIで線図に変換
+                    </button>
                     <p id="ai-line-error-msg" class="text-red-400 text-xs mt-2 hidden"></p>
                 </div>
             </div>
@@ -379,12 +665,15 @@
                 </div>
             </div>
 
-            <div id="tab-ai-edit" class="tab-content space-y-5">
+            <div id="tab-history" class="tab-content space-y-5">
                 <div>
-                    <h3 class="text-md font-bold text-white mb-2 text-purple-400">AIで自由に編集</h3>
-                    <textarea id="ai-prompt-input" rows="3" class="w-full bg-gray-800 text-white text-sm border border-gray-600 rounded p-3 mb-3" placeholder="指示を入力..."></textarea>
-                    <button id="btn-ai-generate" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-4 rounded shadow-lg transition">AIにお願いする</button>
+                    <h3 class="text-md font-bold text-white mb-2 text-indigo-400">編集履歴</h3>
+                    <p class="text-xs text-gray-400 mb-4">過去の編集状態をクリックして復元できます</p>
+                    <div id="history-list" class="grid grid-cols-3 gap-3">
+                        <!-- 履歴アイテムがここに動的に追加されます -->
+                    </div>
                 </div>
+            </div>
             </div>
 
         </div>
@@ -400,11 +689,12 @@
         const flashEffect = document.getElementById('flash-effect');
 
         let originalImage = null; 
+        let history = []; // { dataUrl, time }
+        let currentBrushSize = 30;
+        let isPaintingMask = false;
         let isInpaintMode = false;
-        let startPoint = { x: 0, y: 0 };
-        let isDrawingRect = false;
-        let imgDisplayScale = 1;
-        const apiKey = ""; // Gemini APIキー
+        const maskCanvas = document.createElement('canvas');
+        const maskCtx = maskCanvas.getContext('2d');
 
         function showStatus(title, text) {
             statusTitle.innerText = title;
@@ -416,600 +706,518 @@
             document.getElementById('processing-status').innerText = "Status: Ready";
         }
 
-        const dropArea = document.getElementById("editor-canvas-wrapper");
-        ["dragenter", "dragover", "dragleave", "drop"].forEach(name => {
-            dropArea.addEventListener(name, (e) => { e.preventDefault(); e.stopPropagation(); });
+        // --- 履歴機能 ---
+        function saveToHistory() {
+            const dataUrl = editorCanvas.toDataURL('image/png');
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            history.unshift({ dataUrl, time });
+            if (history.length > 15) history.pop();
+            renderHistory();
+        }
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = "";
+            history.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = "history-item" + (index === 0 ? " active" : "");
+                div.innerHTML = `<img src="${item.dataUrl}"><div class="history-time">${item.time}</div>`;
+                div.onclick = () => loadFromBase64(item.dataUrl.split(',')[1]);
+                list.appendChild(div);
+            });
+        }
+
+        // --- 画像読み込み (ドラッグ＆ドロップ広域化) ---
+        const dropZoneOverlay = document.getElementById("drop-zone-overlay");
+
+        ["dragenter", "dragover"].forEach(name => {
+            window.addEventListener(name, (e) => { 
+                e.preventDefault(); e.stopPropagation();
+                dropZoneOverlay.classList.add('drag-active');
+            }, false);
         });
-        dropArea.addEventListener("drop", (e) => {
+        ["dragleave", "drop"].forEach(name => {
+            window.addEventListener(name, (e) => { 
+                e.preventDefault(); e.stopPropagation();
+                // 画面外またはドロップ時にガイドを消す
+                if (e.relatedTarget === null || name === 'drop') {
+                    dropZoneOverlay.classList.remove('drag-active');
+                }
+            }, false);
+        });
+        window.addEventListener("drop", (e) => {
             const file = e.dataTransfer.files[0];
             if (file && file.type.startsWith("image/")) loadImage(file);
-        });
+        }, false);
 
         function loadImage(file) {
             if (!file) return;
             initOverlay.classList.add('hidden');
             showStatus("読み込み中...", "画像をキャンバスに展開しています");
-
             const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    originalImage = img;
-                    syncCanvasSize(img.naturalWidth, img.naturalHeight);
-                    ctx.drawImage(img, 0, 0);
-                    hideStatus();
-                };
-                img.src = e.target.result;
-            };
+            reader.onload = (e) => loadFromBase64(e.target.result.split(',')[1], true);
             reader.readAsDataURL(file);
         }
 
-        function loadFromBase64(base64Str) {
+        function loadFromBase64(base64Str, isFirstLoad = false) {
             const img = new Image();
             img.onload = () => {
                 syncCanvasSize(img.naturalWidth, img.naturalHeight);
+                ctx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
                 ctx.drawImage(img, 0, 0);
+                if (isFirstLoad) {
+                    originalImage = img;
+                    history = [];
+                    saveToHistory();
+                    
+                    // 自動適用チェック
+                    if (document.getElementById('auto-apply-check').checked && myPresets.length > 0) {
+                        applyPreset(myPresets[myPresets.length - 1]);
+                    }
+                }
+                hideStatus();
             };
-            img.src = `data:image/png;base64,${base64Str}`;
+            img.src = base64Str.startsWith('data:') ? base64Str : `data:image/png;base64,${base64Str}`;
         }
 
         function syncCanvasSize(width, height) {
             editorCanvas.width = width;
             editorCanvas.height = height;
+            maskCanvas.width = width;
+            maskCanvas.height = height;
             document.getElementById('editor-canvas-wrapper').style.aspectRatio = `${width}/${height}`;
             document.getElementById('image-resolution').innerText = `Resolution: ${width}x${height}`;
         }
 
-        document.getElementById('btn-save-image').addEventListener('click', () => {
+        // --- ブラシ消去機能 ---
+        document.getElementById('inpaint-brush-size').oninput = (e) => {
+            currentBrushSize = e.target.value;
+            document.getElementById('inpaint-brush-size-val').innerText = currentBrushSize;
+        };
+
+        const btnEnableInpaint = document.getElementById('btn-enable-inpaint');
+        const inpaintControls = document.getElementById('inpaint-controls');
+
+        btnEnableInpaint.onclick = () => {
+            isInpaintMode = true;
+            btnEnableInpaint.classList.add('hidden');
+            inpaintControls.classList.remove('hidden');
+            maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+            editorCanvas.style.cursor = 'crosshair';
+            setupBrushEvents();
+        };
+
+        function setupBrushEvents() {
+            const paint = (e) => {
+                if (!isPaintingMask) return;
+                const rect = editorCanvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) * (editorCanvas.width / rect.width);
+                const y = (e.clientY - rect.top) * (editorCanvas.height / rect.height);
+                
+                maskCtx.fillStyle = "red";
+                maskCtx.beginPath();
+                maskCtx.arc(x, y, currentBrushSize, 0, Math.PI * 2);
+                maskCtx.fill();
+
+                ctx.save();
+                ctx.globalAlpha = 0.4;
+                ctx.fillStyle = "red";
+                ctx.beginPath();
+                ctx.arc(x, y, currentBrushSize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            };
+
+            editorCanvas.onmousedown = () => isPaintingMask = true;
+            editorCanvas.onmousemove = paint;
+            window.onmouseup = () => isPaintingMask = false;
+        }
+
+        document.getElementById('btn-cancel-inpaint').onclick = () => {
+            isInpaintMode = false;
+            btnEnableInpaint.classList.remove('hidden');
+            inpaintControls.classList.add('hidden');
+            editorCanvas.style.cursor = 'default';
+            editorCanvas.onmousedown = editorCanvas.onmousemove = window.onmouseup = null;
+            loadFromBase64(history[0].dataUrl.split(',')[1]);
+        };
+
+        document.getElementById('btn-apply-inpaint').onclick = async () => {
+            const maskData = maskCanvas.toDataURL('image/png').split(',')[1];
+            const imgData = history[0].dataUrl.split(',')[1];
+            const prompt = "Please remove the regions indicated in red from the image and fill them seamlessly with a natural background based on the surrounding area.";
+            
+            await handleAIGeneration('btn-apply-inpaint', prompt, "AI消去中...", "背景を推測して埋めています...", maskData);
+            
+            isInpaintMode = false;
+            btnEnableInpaint.classList.remove('hidden');
+            inpaintControls.classList.add('hidden');
+            editorCanvas.style.cursor = 'default';
+            editorCanvas.onmousedown = editorCanvas.onmousemove = window.onmouseup = null;
+        };
+
+        // --- エフェクトスライダー連動 ---
+        document.getElementById('slider-blur').oninput = (e) => document.getElementById('blur-val').innerText = e.target.value;
+        document.getElementById('slider-sharpen').oninput = (e) => document.getElementById('sharpen-val').innerText = e.target.value;
+
+        document.getElementById('btn-apply-effects').onclick = () => {
+            const b = parseInt(document.getElementById('slider-blur').value);
+            const s = parseFloat(document.getElementById('slider-sharpen').value);
+            showStatus("エフェクト適用中...", "計算しています");
+            setTimeout(() => {
+                applyBlurSharpen(b, s);
+                saveToHistory();
+                hideStatus();
+            }, 50);
+        };
+
+        function applyBlurSharpen(blurRadius, sharpenAmount) {
+            const temp = document.createElement('canvas');
+            temp.width = editorCanvas.width; temp.height = editorCanvas.height;
+            const tCtx = temp.getContext('2d');
+            
+            if (blurRadius > 0) {
+                tCtx.filter = `blur(${blurRadius}px)`;
+                tCtx.drawImage(editorCanvas, 0, 0);
+                ctx.clearRect(0,0,editorCanvas.width, editorCanvas.height);
+                ctx.drawImage(temp, 0, 0);
+            }
+            if (sharpenAmount > 0) {
+                // Sharpening via overlaying shifted images or high-pass simplified
+                ctx.save();
+                ctx.globalCompositeOperation = 'overlay';
+                ctx.globalAlpha = sharpenAmount / 10;
+                ctx.drawImage(editorCanvas, -1, -1);
+                ctx.drawImage(editorCanvas, 1, 1);
+                ctx.restore();
+            }
+        }
+
+        // --- 分割比較モード ---
+        let isSplitMode = false;
+        document.getElementById('btn-compare-split').onclick = () => {
+            if(!originalImage) return;
+            isSplitMode = !isSplitMode;
+            document.body.classList.toggle('split-active', isSplitMode);
+            document.getElementById('btn-compare-split').innerText = isSplitMode ? "分割比較: ON" : "分割比較: OFF";
+            if(isSplitMode) {
+                beforeCanvas.width = editorCanvas.width; beforeCanvas.height = editorCanvas.height;
+                beforeCanvas.getContext('2d').drawImage(originalImage, 0, 0);
+                updateSlider(50);
+            }
+        };
+
+        // --- AIおまかせ補正 ---
+        document.getElementById('btn-ai-auto-fix').onclick = async () => {
+            const prompt = `Analyze this image and return the optimal correction values in JSON format only: 
+            {"brightness": -100 to 100, "contrast": 0.5 to 3.0, "blur": 0 to 20, "sharpen": 0 to 5}. 
+            Make it look professional, vibrant, and clear.`;
+            showStatus("AI解析中...", "画像に最適な値を計算しています");
+            try {
+                const base64 = editorCanvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+                const res = await fetch('/api/ai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, image: base64 })
+                });
+                const data = await res.json();
+                const jsonText = data.text.match(/\{.*\}/s)[0];
+                const params = JSON.parse(jsonText);
+                
+                applyPreset({
+                    name: "AIオート補正",
+                    brightness: params.brightness || 0,
+                    contrast: params.contrast || 1.1,
+                    blur: params.blur || 0,
+                    sharpen: params.sharpen || 0.5
+                });
+                showStatus("補正完了", "AIが最適な値を適用しました");
+            } catch(e) {
+                console.error(e);
+                showStatus("エラー", "AI解析に失敗しました");
+            }
+            setTimeout(hideStatus, 2000);
+        };
+
+        // --- プリセット管理 ---
+        let myPresets = JSON.parse(localStorage.getItem('linklabo_presets') || '[]');
+        function renderPresets() {
+            const container = document.getElementById('presets-container');
+            container.innerHTML = myPresets.length ? "" : `<span class="text-[10px] text-gray-500 italic">保存されたプリセットはありません</span>`;
+            myPresets.forEach((p, idx) => {
+                const chip = document.createElement('span');
+                chip.className = "preset-chip";
+                chip.innerText = p.name;
+                chip.onclick = () => applyPreset(p);
+                container.appendChild(chip);
+            });
+        }
+        function applyPreset(p) {
+             document.getElementById('adj-brightness').value = p.brightness || 0;
+             document.getElementById('adj-contrast').value = p.contrast || 1.0;
+             document.getElementById('slider-blur').value = p.blur || 0;
+             document.getElementById('slider-sharpen').value = p.sharpen || 0;
+             // 数値表示も更新
+             document.getElementById('adj-brightness-val').innerText = p.brightness || 0;
+             document.getElementById('adj-contrast-val').innerText = p.contrast || 1.0;
+             document.getElementById('blur-val').innerText = p.blur || 0;
+             document.getElementById('sharpen-val').innerText = p.sharpen || 0;
+             
+             // 即時適用
+             document.getElementById('btn-apply-bc').click();
+             document.getElementById('btn-apply-effects').click();
+             showStatus("プリセット適用", `${p.name} を適用しました`);
+             setTimeout(hideStatus, 1500);
+        }
+        document.getElementById('btn-save-preset').onclick = () => {
+            const name = prompt("マイスタイルの名前を入力してください:", `スタイル ${myPresets.length + 1}`);
+            if(!name) return;
+            const newPreset = {
+                name,
+                brightness: parseInt(document.getElementById('adj-brightness').value),
+                contrast: parseFloat(document.getElementById('adj-contrast').value),
+                blur: parseInt(document.getElementById('slider-blur').value),
+                sharpen: parseFloat(document.getElementById('slider-sharpen').value)
+            };
+            myPresets.push(newPreset);
+            localStorage.setItem('linklabo_presets', JSON.stringify(myPresets));
+            renderPresets();
+        };
+        renderPresets();
+
+        // --- 検索機能 ---
+        const featureSearch = document.getElementById('feature-search');
+        featureSearch.oninput = (e) => {
+            const query = e.target.value.toLowerCase();
+            const contents = document.querySelectorAll('.tab-content');
+            
+            // 検索時は「すべて」タブを強制アクティブにするor現在のアクティブタブ内で検索
+            // ここでは使いやすさを考慮し、検索時は全対象からマッチするものを表示します
+            contents.forEach(c => {
+                const text = c.innerText.toLowerCase();
+                const match = text.includes(query);
+                c.style.display = match ? 'block' : 'none';
+                if(match) {
+                    c.classList.add('active');
+                    c.style.borderTop = '1px solid rgba(255,255,255,0.1)';
+                    c.style.paddingTop = '20px';
+                    c.style.marginBottom = '20px';
+                }
+            });
+            
+            if(!query) {
+                // 検索が空になったら現在のアクティブなボタンの状態に戻す
+                const activeBtn = document.querySelector('.tab-button.active');
+                if(activeBtn) activeBtn.click();
+            }
+        };
+
+        // --- タブ切り替え ---
+        const tabContentsWrapper = document.getElementById('tab-contents-wrapper');
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.onclick = () => {
+                const target = btn.dataset.tab;
+                
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                const contents = document.querySelectorAll('.tab-content');
+                const container = document.getElementById('control-panel-body');
+                
+                if (target === 'all') {
+                    container.classList.add('all-mode');
+                    contents.forEach(c => c.classList.remove('active'));
+                } else if (target === 'recommended') {
+                    // おすすめモード：特定の重要機能だけ表示
+                    container.classList.remove('all-mode');
+                    contents.forEach(c => c.classList.remove('active'));
+                    
+                    // おすすめとして表示したい特定のコンテンツ
+                    ['tab-upload', 'tab-bg-remove', 'tab-adjustments', 'tab-ai-edit'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.classList.add('active');
+                    });
+                } else {
+                    container.classList.remove('all-mode');
+                    contents.forEach(c => c.classList.remove('active'));
+                    const targetEl = document.getElementById(`tab-${target}`);
+                    if (targetEl) targetEl.classList.add('active');
+                }
+                
+                featureSearch.value = "";
+            };
+        });
+
+        // --- ペースト読み込み (Ctrl + V) ---
+        window.addEventListener('paste', (e) => {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const blob = items[i].getAsFile();
+                    loadImage(blob);
+                }
+            }
+        });
+
+        // --- AI 連携共通処理 ---
+        async function handleAIGeneration(btnId, prompt, sTitle, sText, maskBase64 = null) {
+            const btn = document.getElementById(btnId);
+            showStatus(sTitle, sText);
+            document.getElementById('processing-status').innerText = "Status: AI Processing...";
+
+            try {
+                const base64Image = history[0].dataUrl.split(',')[1];
+                const res = await fetch('/api/ai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, image: base64Image, mask: maskBase64 })
+                });
+
+                const data = await res.json();
+                if (data.image) {
+                    loadFromBase64(data.image);
+                    setTimeout(saveToHistory, 500);
+                } else if (data.error) {
+                    alert("AI Error: " + data.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("通信エラーが発生しました。");
+            } finally {
+                hideStatus();
+            }
+        }
+
+        // --- その他のフィルタ ---
+        document.getElementById('btn-undo').onclick = () => {
+            if (history.length > 1) {
+                history.shift();
+                loadFromBase64(history[0].dataUrl.split(',')[1]);
+                renderHistory();
+            }
+        };
+
+        const beforeCanvas = document.getElementById('before-canvas');
+        const comparisonContainer = document.getElementById('comparison-container');
+        const comparisonSlider = document.getElementById('comparison-slider');
+        const comparisonOverlay = document.getElementById('comparison-overlay');
+
+        document.getElementById('btn-compare').onmousedown = () => {
+            if (!originalImage) return;
+            beforeCanvas.width = editorCanvas.width; beforeCanvas.height = editorCanvas.height;
+            beforeCanvas.getContext('2d').drawImage(originalImage, 0, 0);
+            comparisonContainer.style.display = 'block';
+            updateSlider(50);
+        };
+        const stopComp = () => comparisonContainer.style.display = 'none';
+        document.getElementById('btn-compare').onmouseup = stopComp;
+        document.getElementById('btn-compare').onmouseleave = stopComp;
+
+        function updateSlider(pct) {
+            comparisonSlider.style.left = `${pct}%`;
+            comparisonOverlay.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
+        }
+
+        comparisonSlider.onmousedown = (e) => {
+            const moved = (me) => {
+                const r = comparisonContainer.getBoundingClientRect();
+                let p = ((me.clientX - r.left) / r.width) * 100;
+                updateSlider(Math.max(0, Math.min(100, p)));
+            };
+            window.addEventListener('mousemove', moved);
+            window.addEventListener('mouseup', () => window.removeEventListener('mousemove', moved), { once: true });
+        };
+
+        document.getElementById('image-upload-input').onchange = (e) => loadImage(e.target.files[0]);
+        document.getElementById('initial-image-input').onchange = (e) => loadImage(e.target.files[0]);
+
+        // --- 保存 ---
+        document.getElementById('btn-save-image').onclick = () => {
             flashEffect.classList.add('flash-active');
             setTimeout(() => flashEffect.classList.remove('flash-active'), 500);
             const link = document.createElement('a');
-            link.download = `edited_${Date.now()}.png`;
-            link.href = editorCanvas.toDataURL();
+            link.download = `Linklabo_${Date.now()}.png`;
+            link.href = editorCanvas.toDataURL('image/png');
             link.click();
-        });
+        };
 
-        document.getElementById('btn-undo').addEventListener('click', () => {
-            if (!originalImage) return;
-            syncCanvasSize(originalImage.naturalWidth, originalImage.naturalHeight);
-            ctx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
-            ctx.drawImage(originalImage, 0, 0);
-            
-            flashEffect.classList.remove('flash-active');
-            void flashEffect.offsetWidth; 
-            flashEffect.classList.add('flash-active');
-            document.getElementById('processing-status').innerText = "Status: Reset to Original";
-        });
+        // --- その他のAIボタン連動 ---
+        document.getElementById('btn-ai-upscale').onclick = () => handleAIGeneration('btn-ai-upscale', "Enhance quality, sharpen details, remove noise.", "AI高画質化中...", "処理しています...");
+        document.getElementById('btn-ai-line-art').onclick = () => {
+            const style = document.getElementById('ai-line-style-select')?.value || 'clean';
+            let p = "Convert to clean line art.";
+            if(style==='blueprint') p = "Convert to blueprint style line art.";
+            handleAIGeneration('btn-ai-line-art', p, "AI線図生成中...", "描画しています...");
+        };
+        document.getElementById('btn-flat-color').onclick = () => handleAIGeneration('btn-flat-color', "Flatten colors to look like digital art, remove gradients.", "AIフラット化中...", "色を統一しています...");
+        document.getElementById('btn-posterize').onclick = () => handleAIGeneration('btn-posterize', "Apply cel-shading / posterize effect. Limit color palette.", "AI色統一中...", "アニメ調に加工しています...");
+        document.getElementById('btn-ai-generate').onclick = () => {
+            const prompt = document.getElementById('ai-prompt-input').value;
+            if(!prompt) return alert("指示を入力してください");
+            handleAIGeneration('btn-ai-generate', prompt, "AI処理中...", "AIが画像を編集しています...");
+        };
 
-        const tabButtons = document.querySelectorAll('.tab-button');
-        const tabContents = document.querySelectorAll('.tab-content');
-        tabButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                tabButtons.forEach(b => b.classList.remove('active'));
-                tabContents.forEach(c => c.classList.remove('active'));
-                btn.classList.add('active');
-                document.getElementById(`tab-${btn.getAttribute('data-tab')}`).classList.add('active');
-            });
-        });
-
-        // ================= JS Pixel Processing Utilities =================
-        function processPixels(processFn) {
-            const imgData = ctx.getImageData(0, 0, editorCanvas.width, editorCanvas.height);
-            const data = imgData.data;
-            for (let i = 0; i < data.length; i += 4) {
-                processFn(data, i);
-            }
-            ctx.putImageData(imgData, 0, 0);
-        }
-
-        function transformCanvas(drawFn, newW, newH) {
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = editorCanvas.width;
-            tempCanvas.height = editorCanvas.height;
-            tempCanvas.getContext('2d').drawImage(editorCanvas, 0, 0);
-            
-            syncCanvasSize(newW, newH);
-            ctx.clearRect(0, 0, newW, newH);
-            ctx.save();
-            drawFn(ctx, tempCanvas);
-            ctx.restore();
-        }
-
-        function applyConvolution(kernel) {
-            const w = editorCanvas.width;
-            const h = editorCanvas.height;
-            const srcData = ctx.getImageData(0, 0, w, h).data;
-            const output = ctx.createImageData(w, h);
-            const dstData = output.data;
-            const side = Math.round(Math.sqrt(kernel.length));
-            const halfSide = Math.floor(side / 2);
-
-            for (let y = 0; y < h; y++) {
-                for (let x = 0; x < w; x++) {
-                    const dstOff = (y * w + x) * 4;
-                    let r = 0, g = 0, b = 0;
-                    for (let cy = 0; cy < side; cy++) {
-                        for (let cx = 0; cx < side; cx++) {
-                            const scy = Math.min(Math.max(y + cy - halfSide, 0), h - 1);
-                            const scx = Math.min(Math.max(x + cx - halfSide, 0), w - 1);
-                            const srcOff = (scy * w + scx) * 4;
-                            const wt = kernel[cy * side + cx];
-                            r += srcData[srcOff] * wt;
-                            g += srcData[srcOff + 1] * wt;
-                            b += srcData[srcOff + 2] * wt;
-                        }
-                    }
-                    dstData[dstOff] = r; dstData[dstOff + 1] = g; dstData[dstOff + 2] = b;
-                    dstData[dstOff + 3] = srcData[dstOff + 3];
-                }
-            }
-            ctx.putImageData(output, 0, 0);
-        }
-
-        // ================= 画像加工 (Adjustments) =================
-        const brightnessSlider = document.getElementById('adj-brightness');
-        const brightnessVal = document.getElementById('adj-brightness-val');
-        const contrastSlider = document.getElementById('adj-contrast');
-        const contrastVal = document.getElementById('adj-contrast-val');
-        brightnessSlider.addEventListener('input', () => brightnessVal.innerText = brightnessSlider.value);
-        contrastSlider.addEventListener('input', () => contrastVal.innerText = contrastSlider.value);
-
-        document.getElementById('btn-apply-bc').addEventListener('click', () => {
-            const b = parseInt(brightnessSlider.value);
-            const c = parseFloat(contrastSlider.value);
-            processPixels((data, i) => {
-                data[i] = Math.min(Math.max((data[i] - 128) * c + 128 + b, 0), 255);
-                data[i+1] = Math.min(Math.max((data[i+1] - 128) * c + 128 + b, 0), 255);
-                data[i+2] = Math.min(Math.max((data[i+2] - 128) * c + 128 + b, 0), 255);
-            });
-            document.getElementById('processing-status').innerText = "Applied: Brightness/Contrast";
-        });
-
-        document.getElementById('btn-rotate-left').addEventListener('click', () => {
-            transformCanvas((c, img) => {
-                c.translate(0, editorCanvas.height);
-                c.rotate(-Math.PI / 2);
-                c.drawImage(img, 0, 0);
-            }, editorCanvas.height, editorCanvas.width);
-        });
-        document.getElementById('btn-rotate-right').addEventListener('click', () => {
-            transformCanvas((c, img) => {
-                c.translate(editorCanvas.width, 0);
-                c.rotate(Math.PI / 2);
-                c.drawImage(img, 0, 0);
-            }, editorCanvas.height, editorCanvas.width);
-        });
-        document.getElementById('btn-flip-h').addEventListener('click', () => {
-            transformCanvas((c, img) => {
-                c.translate(editorCanvas.width, 0);
-                c.scale(-1, 1);
-                c.drawImage(img, 0, 0);
-            }, editorCanvas.width, editorCanvas.height);
-        });
-        document.getElementById('btn-flip-v').addEventListener('click', () => {
-            transformCanvas((c, img) => {
-                c.translate(0, editorCanvas.height);
-                c.scale(1, -1);
-                c.drawImage(img, 0, 0);
-            }, editorCanvas.width, editorCanvas.height);
-        });
-
-        document.getElementById('btn-blur').addEventListener('click', () => {
-            ctx.filter = 'blur(5px)';
-            const temp = document.createElement('canvas');
-            temp.width = editorCanvas.width; temp.height = editorCanvas.height;
-            temp.getContext('2d').drawImage(editorCanvas, 0, 0);
-            ctx.drawImage(temp, 0, 0);
-            ctx.filter = 'none';
-        });
-        document.getElementById('btn-sharpen').addEventListener('click', () => {
-            showStatus("処理中...", "シャープ化を適用しています");
-            setTimeout(() => {
-                applyConvolution([0, -1, 0, -1, 5, -1, 0, -1, 0]);
-                hideStatus();
-            }, 50);
-        });
-
-        // ================= 背景透過 & モルフォロジー =================
-        document.getElementById('btn-remove-bg').addEventListener('click', () => {
-            const imgData = ctx.getImageData(0, 0, editorCanvas.width, editorCanvas.height);
-            const data = imgData.data;
-            // 下部中央のピクセルを背景色とみなす
-            const targetX = Math.floor(editorCanvas.width / 2);
-            const targetY = editorCanvas.height - 10;
-            const targetIdx = (targetY * editorCanvas.width + targetX) * 4;
-            const r0 = data[targetIdx], g0 = data[targetIdx+1], b0 = data[targetIdx+2];
-            const tolerance = 40;
-
-            for (let i = 0; i < data.length; i += 4) {
-                if (Math.abs(data[i] - r0) < tolerance && 
-                    Math.abs(data[i+1] - g0) < tolerance && 
-                    Math.abs(data[i+2] - b0) < tolerance) {
-                    data[i+3] = 0;
-                }
-            }
-            ctx.putImageData(imgData, 0, 0);
-        });
-
-        const lineWeightSlider = document.getElementById('line-weight-slider');
-        const lineWeightValue = document.getElementById('line-weight-value');
-        lineWeightSlider.addEventListener('input', () => lineWeightValue.innerText = lineWeightSlider.value);
-
-        function applyMorphology(op) {
-            showStatus("処理中...", "線の太さを計算しています");
-            setTimeout(() => {
-                const w = editorCanvas.width, h = editorCanvas.height;
-                const src = ctx.getImageData(0, 0, w, h).data;
-                const out = ctx.createImageData(w, h);
-                const dst = out.data;
-                const k = parseInt(lineWeightSlider.value);
-                
-                for (let y = 0; y < h; y++) {
-                    for (let x = 0; x < w; x++) {
-                        let minR = 255, maxR = 0, minG = 255, maxG = 0, minB = 255, maxB = 0;
-                        for (let cy = -k; cy <= k; cy++) {
-                            for (let cx = -k; cx <= k; cx++) {
-                                const sy = Math.min(Math.max(y + cy, 0), h - 1);
-                                const sx = Math.min(Math.max(x + cx, 0), w - 1);
-                                const idx = (sy * w + sx) * 4;
-                                if(src[idx] < minR) minR = src[idx]; if(src[idx] > maxR) maxR = src[idx];
-                                if(src[idx+1] < minG) minG = src[idx+1]; if(src[idx+1] > maxG) maxG = src[idx+1];
-                                if(src[idx+2] < minB) minB = src[idx+2]; if(src[idx+2] > maxB) maxB = src[idx+2];
-                            }
-                        }
-                        const outIdx = (y * w + x) * 4;
-                        if (op === 'erode') { // 黒線を太く (暗い色を採用)
-                            dst[outIdx] = minR; dst[outIdx+1] = minG; dst[outIdx+2] = minB;
-                        } else { // 黒線を細く (明るい色を採用)
-                            dst[outIdx] = maxR; dst[outIdx+1] = maxG; dst[outIdx+2] = maxB;
-                        }
-                        dst[outIdx+3] = src[outIdx+3];
-                    }
-                }
-                ctx.putImageData(out, 0, 0);
-                hideStatus();
-            }, 50);
-        }
-        document.getElementById('btn-thicken-line').addEventListener('click', () => applyMorphology('erode'));
-        document.getElementById('btn-thin-line').addEventListener('click', () => applyMorphology('dilate'));
-
-        // ================= フィルタ類 =================
-        document.getElementById('btn-invert-bw').addEventListener('click', () => {
-            processPixels((d, i) => {
-                const g = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-                const inv = 255 - g;
-                d[i] = d[i+1] = d[i+2] = inv;
-            });
-        });
-
-        document.getElementById('btn-grayscale').addEventListener('click', () => {
-            processPixels((d, i) => {
-                const g = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-                d[i] = d[i+1] = d[i+2] = g;
-            });
-        });
-
-        document.getElementById('btn-sketch-realistic').addEventListener('click', () => {
-            const w = editorCanvas.width, h = editorCanvas.height;
-            const base = document.createElement('canvas'); base.width = w; base.height = h;
-            const baseCtx = base.getContext('2d');
-            baseCtx.drawImage(editorCanvas, 0, 0);
-            
-            // 1. Grayscale
-            const imgData = baseCtx.getImageData(0, 0, w, h);
-            for (let i = 0; i < imgData.data.length; i += 4) {
-                const g = 0.299 * imgData.data[i] + 0.587 * imgData.data[i+1] + 0.114 * imgData.data[i+2];
-                imgData.data[i] = imgData.data[i+1] = imgData.data[i+2] = g;
-            }
-            baseCtx.putImageData(imgData, 0, 0);
-            ctx.drawImage(base, 0, 0); // Grayscale as bottom layer
-
-            // 2. Invert & Blur
-            for (let i = 0; i < imgData.data.length; i += 4) {
-                imgData.data[i] = 255 - imgData.data[i];
-                imgData.data[i+1] = 255 - imgData.data[i+1];
-                imgData.data[i+2] = 255 - imgData.data[i+2];
-            }
-            baseCtx.putImageData(imgData, 0, 0);
-            baseCtx.filter = 'blur(10px)';
-            baseCtx.drawImage(base, 0, 0);
-            baseCtx.filter = 'none';
-
-            // 3. Color Dodge
-            ctx.globalCompositeOperation = 'color-dodge';
-            ctx.drawImage(base, 0, 0);
-            ctx.globalCompositeOperation = 'source-over';
-        });
-
-        document.getElementById('btn-sketch-comic').addEventListener('click', () => {
-            // 簡易エッジ抽出 (Sobel) + 二値化
-            showStatus("処理中...", "線画を抽出しています");
-            setTimeout(() => {
-                const w = editorCanvas.width, h = editorCanvas.height;
-                const src = ctx.getImageData(0, 0, w, h).data;
-                const out = ctx.createImageData(w, h);
-                const dst = out.data;
-                
-                const gray = new Uint8Array(w * h);
-                for (let i = 0; i < src.length; i += 4) {
-                    gray[i/4] = 0.299 * src[i] + 0.587 * src[i+1] + 0.114 * src[i+2];
-                }
-
-                for (let y = 1; y < h - 1; y++) {
-                    for (let x = 1; x < w - 1; x++) {
-                        const gx = -gray[(y-1)*w + (x-1)] + gray[(y-1)*w + (x+1)]
-                                 - 2*gray[y*w + (x-1)] + 2*gray[y*w + (x+1)]
-                                 - gray[(y+1)*w + (x-1)] + gray[(y+1)*w + (x+1)];
-                        const gy = -gray[(y-1)*w + (x-1)] - 2*gray[(y-1)*w + x] - gray[(y-1)*w + (x+1)]
-                                 + gray[(y+1)*w + (x-1)] + 2*gray[(y+1)*w + x] + gray[(y+1)*w + (x+1)];
-                        
-                        const mag = Math.sqrt(gx*gx + gy*gy);
-                        const v = mag > 50 ? 0 : 255; // Threshold
-                        const idx = (y * w + x) * 4;
-                        dst[idx] = dst[idx+1] = dst[idx+2] = v;
-                        dst[idx+3] = 255;
-                    }
-                }
-                ctx.putImageData(out, 0, 0);
-                hideStatus();
-            }, 50);
-        });
-
-        // ================= ディザリング & ハーフトーン =================
-        document.getElementById('dither-contrast-slider').addEventListener('input', (e) => document.getElementById('dither-contrast-value').innerText = e.target.value);
-        document.getElementById('dot-size-slider').addEventListener('input', (e) => document.getElementById('dot-size-value').innerText = e.target.value);
-
-        document.getElementById('btn-apply-dither').addEventListener('click', () => {
-            showStatus("処理中...", "ディザリング処理を行っています");
-            setTimeout(() => {
-                const contrast = parseFloat(document.getElementById('dither-contrast-slider').value);
-                const mode = document.getElementById('dither-mode-select').value;
-                const isTransparent = document.getElementById('dither-transparent-check').checked;
-                const isColor = mode.startsWith('color');
-                
-                let levels = 2;
-                if (mode === 'gray4') levels = 4; else if (mode === 'gray8') levels = 8;
-                else if (mode === 'color8') levels = 2; else if (mode === 'color64') levels = 4;
-                const step = 255 / (levels - 1);
-
-                const w = editorCanvas.width, h = editorCanvas.height;
-                const imgData = ctx.getImageData(0, 0, w, h);
-                const data = imgData.data;
-
-                // Grayscale/Contrast init
-                for (let i = 0; i < data.length; i += 4) {
-                    if (!isColor) {
-                        const g = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
-                        data[i] = data[i+1] = data[i+2] = g;
-                    }
-                    if (contrast !== 1.0) {
-                        data[i] = (data[i] - 128) * contrast + 128;
-                        data[i+1] = (data[i+1] - 128) * contrast + 128;
-                        data[i+2] = (data[i+2] - 128) * contrast + 128;
-                    }
-                }
-
-                // Floyd-Steinberg
-                const floatData = new Float32Array(data);
-                for (let y = 0; y < h; y++) {
-                    for (let x = 0; x < w; x++) {
-                        const maxCh = isColor ? 3 : 1;
-                        for (let c = 0; c < maxCh; c++) {
-                            const idx = (y * w + x) * 4 + c;
-                            const oldP = floatData[idx];
-                            const newP = Math.round(Math.min(Math.max(oldP, 0), 255) / step) * step;
-                            floatData[idx] = newP;
-                            if(!isColor) { floatData[idx+1] = newP; floatData[idx+2] = newP; }
-                            
-                            const err = oldP - newP;
-                            if (x + 1 < w) floatData[idx + 4] += err * 7 / 16;
-                            if (y + 1 < h) {
-                                if (x > 0) floatData[idx + w * 4 - 4] += err * 3 / 16;
-                                floatData[idx + w * 4] += err * 5 / 16;
-                                if (x + 1 < w) floatData[idx + w * 4 + 4] += err * 1 / 16;
-                            }
-                        }
-                    }
-                }
-
-                for (let i = 0; i < data.length; i++) data[i] = floatData[i];
-                
-                if (isTransparent) {
-                    for (let i = 0; i < data.length; i += 4) {
-                        if (data[i] > 250 && data[i+1] > 250 && data[i+2] > 250) data[i+3] = 0;
-                    }
-                }
-                ctx.putImageData(imgData, 0, 0);
-                hideStatus();
-            }, 50);
-        });
-
-        document.getElementById('btn-apply-halftone').addEventListener('click', () => {
-            showStatus("処理中...", "ドット加工を行っています");
-            setTimeout(() => {
-                const cellSize = parseInt(document.getElementById('dot-size-slider').value);
-                const mode = document.querySelector('input[name="dot-mode"]:checked').value;
-                const w = editorCanvas.width, h = editorCanvas.height;
-                const srcData = ctx.getImageData(0, 0, w, h).data;
-                
-                ctx.fillStyle = mode === 'white' ? '#000' : '#FFF';
-                ctx.fillRect(0, 0, w, h);
-                const maxR = (cellSize / 2) * 0.9;
-
-                for (let y = 0; y < h; y += cellSize) {
-                    for (let x = 0; x < w; x += cellSize) {
-                        let tI = 0, rS = 0, gS = 0, bS = 0, cnt = 0;
-                        for (let by = 0; by < cellSize; by++) {
-                            for (let bx = 0; bx < cellSize; bx++) {
-                                if (y+by < h && x+bx < w) {
-                                    const i = ((y+by)*w + (x+bx)) * 4;
-                                    tI += 0.299*srcData[i] + 0.587*srcData[i+1] + 0.114*srcData[i+2];
-                                    if(mode==='color'){ rS+=srcData[i]; gS+=srcData[i+1]; bS+=srcData[i+2]; }
-                                    cnt++;
-                                }
-                            }
-                        }
-                        if (cnt === 0) continue;
-                        const avgI = tI / cnt;
-                        let r = mode === 'white' ? maxR * Math.pow(avgI/255, 1.2) : maxR * Math.pow((255-avgI)/255, 1.2);
-                        
-                        if (r > 0.5) {
-                            ctx.beginPath();
-                            ctx.arc(x + cellSize/2, y + cellSize/2, r, 0, 2*Math.PI);
-                            if(mode==='black') ctx.fillStyle = '#000';
-                            else if(mode==='white') ctx.fillStyle = '#FFF';
-                            else ctx.fillStyle = `rgb(${Math.round(rS/cnt)},${Math.round(gS/cnt)},${Math.round(bS/cnt)})`;
-                            ctx.fill();
-                        }
-                    }
-                }
-                hideStatus();
-            }, 50);
-        });
-
-        // ================= API 呼び出し系 (Gemini) =================
-        async function callGeminiVision(prompt, base64) {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: "image/png", data: base64 } }] }],
-                    generationConfig: { responseModalities: ["IMAGE"] }
-                })
-            });
-            if (!res.ok) throw new Error("API Error");
-            const result = await res.json();
-            return result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-        }
-
-        async function handleAIGeneration(btnId, prompt, statusT, statusD) {
-            const btn = document.getElementById(btnId);
-            btn.disabled = true; btn.classList.add('opacity-50');
-            showStatus(statusT, statusD);
-            try {
-                const b64 = editorCanvas.toDataURL('image/png').split(',')[1];
-                const outB64 = await callGeminiVision(prompt, b64);
-                if (outB64) loadFromBase64(outB64);
-            } catch (err) {
-                alert("生成に失敗しました。時間をおいて再試行してください。");
-            } finally {
-                hideStatus();
-                btn.disabled = false; btn.classList.remove('opacity-50');
-            }
-        }
-
-        document.getElementById('btn-ai-upscale').addEventListener('click', () => {
-            handleAIGeneration('btn-ai-upscale', "Enhance image quality, remove blur, remove noise, sharpen details, improve resolution.", "AI高画質化中...", "画質を改善しています (約10〜15秒)");
-        });
-
-        document.getElementById('btn-flat-color').addEventListener('click', () => {
-            handleAIGeneration('btn-flat-color', "Fix color inconsistency, flatten colors to look like high-quality anime cel shading. Keep original lines.", "AIフラット化中...", "色ムラをなくし、塗りを滑らかにしています...");
-        });
-
-        document.getElementById('btn-posterize').addEventListener('click', () => {
-            handleAIGeneration('btn-posterize', "Apply cel-shading style. Reduce the color palette to essential colors, creating a clean, poster-like anime look.", "AI色統一中...", "色数を減らしてアニメ調にまとめています...");
-        });
-
-        document.getElementById('btn-ai-line-art').addEventListener('click', () => {
-            const style = document.getElementById('ai-line-style-select').value;
-            let p = "Convert this image into a clean, high-quality professional line drawing with white background and black lines.";
-            if (style === 'blueprint') p = "Convert this image into a professional blueprint technical drawing with a deep blue background and precise white lines.";
-            if (style === 'technical') p = "Convert this image into an industrial technical drawing style. Sharp black lines on white background.";
-            if (style === 'pencil') p = "Convert this image into a detailed graphite pencil sketch.";
-            handleAIGeneration('btn-ai-line-art', p, "線図を生成中...", "AIが解析して描き直しています (約10秒)");
-        });
-
-        document.getElementById('btn-ai-generate').addEventListener('click', () => {
-            const p = document.getElementById('ai-prompt-input').value;
-            if(!p) return alert("指示を入力してください");
-            handleAIGeneration('btn-ai-generate', p, "AI処理中...", "AIが画像を編集しています");
-        });
-
-        // AI物体消去 (Inpaint)
-        document.getElementById('btn-enable-inpaint').addEventListener('click', () => {
-            isInpaintMode = true;
-            editorCanvas.style.cursor = 'crosshair';
-            document.getElementById('inpaint-instruction').classList.remove('hidden');
-            document.getElementById('btn-cancel-inpaint').classList.remove('hidden');
-            document.getElementById('btn-enable-inpaint').classList.add('hidden');
-            
-            editorCanvas.onmousedown = (e) => {
-                const r = editorCanvas.getBoundingClientRect();
-                imgDisplayScale = editorCanvas.width / r.width;
-                startPoint = { x: (e.clientX - r.left) * imgDisplayScale, y: (e.clientY - r.top) * imgDisplayScale };
-                isDrawingRect = true;
-            };
-            editorCanvas.onmousemove = (e) => {
-                if (!isDrawingRect) return;
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = editorCanvas.width; tempCanvas.height = editorCanvas.height;
-                // Since we don't store currentImageMat anymore, we need an original reference for the frame. 
-                // A better approach is to redraw from an offscreen canvas, but for simplicity we skip live preview 
-                // and just rely on the final mouseup. For live preview, we'd need to cache the canvas state on mousedown.
-            };
-            editorCanvas.onmouseup = (e) => {
-                isDrawingRect = false;
-                const r = editorCanvas.getBoundingClientRect();
-                const endX = (e.clientX - r.left) * imgDisplayScale, endY = (e.clientY - r.top) * imgDisplayScale;
-                const x = Math.min(startPoint.x, endX), y = Math.min(startPoint.y, endY);
-                const w = Math.abs(endX - startPoint.x), h = Math.abs(endY - startPoint.y);
-                
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = editorCanvas.width; tempCanvas.height = editorCanvas.height;
-                const tCtx = tempCanvas.getContext('2d');
-                tCtx.drawImage(editorCanvas, 0, 0);
-                tCtx.fillStyle = '#FF0000';
-                tCtx.fillRect(x, y, w, h);
-                
-                const b64 = tempCanvas.toDataURL('image/png').split(',')[1];
-                const p = "The red rectangle area in this image is a mask indicating an object to remove. Please replace the red area naturally. The final image should look clean without the red mask.";
-                handleAIGeneration('btn-enable-inpaint', p, "AI物体消去中...", "選択範囲を背景で補完しています...");
-                
-                endInpaintMode();
-            };
-        });
-
-        function endInpaintMode() {
-            isInpaintMode = false;
-            editorCanvas.style.cursor = 'default';
-            editorCanvas.onmousedown = editorCanvas.onmousemove = editorCanvas.onmouseup = null;
-            document.getElementById('inpaint-instruction').classList.add('hidden');
-            document.getElementById('btn-cancel-inpaint').classList.add('hidden');
-            document.getElementById('btn-enable-inpaint').classList.remove('hidden');
-        }
-        document.getElementById('btn-cancel-inpaint').addEventListener('click', endInpaintMode);
-
-        // ================= SVG =================
-        document.getElementById('svg-colors').addEventListener('input', (e) => document.getElementById('svg-colors-val').innerText = e.target.value);
-        document.getElementById('btn-make-svg').addEventListener('click', () => {
+        // --- SVG変換 (ImageTracer) ---
+        document.getElementById('svg-colors')?.addEventListener('input', (e) => document.getElementById('svg-colors-val').innerText = e.target.value);
+        document.getElementById('btn-make-svg')?.addEventListener('click', () => {
             showStatus("ベクター変換中...", "パスを計算しています");
             setTimeout(() => {
                 try {
                     const imgData = ctx.getImageData(0, 0, editorCanvas.width, editorCanvas.height);
-                    const options = { numberofcolors: parseInt(document.getElementById('svg-colors').value), scale: 1, simplification: 1, moretracing: true };
-                    const svgString = ImageTracer.imagedataToSVG(imgData, options);
-                    
+                    const colors = parseInt(document.getElementById('svg-colors').value);
+                    const svgString = ImageTracer.imagedataToSVG(imgData, { numberofcolors: colors });
                     document.getElementById('svg-result-area').classList.remove('hidden');
-                    document.getElementById('svg-code-output').value = svgString.substring(0, 300) + "... (省略)";
+                    document.getElementById('svg-code-output').value = svgString.substring(0, 500) + "...";
                     
-                    const oldBtn = document.getElementById('btn-download-svg');
-                    const newBtn = oldBtn.cloneNode(true);
-                    oldBtn.parentNode.replaceChild(newBtn, oldBtn);
-                    newBtn.addEventListener('click', () => {
-                        const blob = new Blob([svgString], {type: "image/svg+xml;charset=utf-8"});
+                    const downBtn = document.getElementById('btn-download-svg');
+                    downBtn.onclick = () => {
+                        const blob = new Blob([svgString], {type: "image/svg+xml"});
                         const link = document.createElement('a');
                         link.href = URL.createObjectURL(blob);
-                        link.download = `vector_${Date.now()}.svg`;
+                        link.download = `Linklabo_${Date.now()}.svg`;
                         link.click();
-                    });
-                } catch(e) { alert("変換エラー"); }
+                    };
+                } catch(e) { alert("ベクター変換に失敗しました"); }
                 hideStatus();
             }, 50);
         });
 
-        document.getElementById('image-upload-input').addEventListener('change', (e) => loadImage(e.target.files[0]));
-        document.getElementById('initial-image-input').addEventListener('change', (e) => loadImage(e.target.files[0]));
+        // 背景削除 (簡易)
+        document.getElementById('btn-remove-bg').onclick = () => {
+             const d = ctx.getImageData(0,0,editorCanvas.width, editorCanvas.height);
+             const target = (editorCanvas.height - 5) * editorCanvas.width * 4 + (editorCanvas.width/2) * 4;
+             const r0 = d.data[target], g0 = d.data[target+1], b0 = d.data[target+2];
+             for(let i=0; i<d.data.length; i+=4) {
+                 if(Math.abs(d.data[i]-r0)<40 && Math.abs(d.data[i+1]-g0)<40 && Math.abs(d.data[i+2]-b0)<40) d.data[i+3]=0;
+             }
+             ctx.putImageData(d, 0, 0);
+             saveToHistory();
+        };
 
+        // --- 基本フィルタ ---
+        document.getElementById('btn-grayscale').onclick = () => {
+            const d = ctx.getImageData(0,0,editorCanvas.width, editorCanvas.height);
+            for(let i=0; i<d.data.length; i+=4) {
+                const g = 0.299 * d.data[i] + 0.587 * d.data[i+1] + 0.114 * d.data[i+2];
+                d.data[i] = d.data[i+1] = d.data[i+2] = g;
+            }
+            ctx.putImageData(d, 0, 0);
+            saveToHistory();
+        };
+
+        document.getElementById('btn-invert-bw').onclick = () => {
+            const d = ctx.getImageData(0,0,editorCanvas.width, editorCanvas.height);
+            for(let i=0; i<d.data.length; i+=4) {
+                d.data[i] = 255-d.data[i]; d.data[i+1] = 255-d.data[i+1]; d.data[i+2] = 255-d.data[i+2];
+            }
+            ctx.putImageData(d, 0, 0);
+            saveToHistory();
+        };
+        
+        // 初期状態で「おすすめ」を表示
+        document.addEventListener('DOMContentLoaded', () => {
+            const recBtn = document.querySelector('.tab-button[data-tab="recommended"]');
+            if (recBtn) recBtn.click();
+        });
     </script>
 </body>
 </html>
