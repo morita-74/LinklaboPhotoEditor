@@ -14,7 +14,6 @@ echo.
 :: Gitリポジトリかチェック
 if not exist ".git" (
     echo [ERROR] このフォルダはGitリポジトリではありません。
-    echo git init を実行するか、正しいフォルダにバッチを置いてください。
     pause
     exit /b
 )
@@ -25,28 +24,27 @@ git add .
 :: 変更があるかチェック
 git status --short | findstr /R "^" > nul
 if %errorlevel% neq 0 (
-    echo [INFO] 変更はありません。送信をスキップします。
+    echo [INFO] 変更はありません。送信（Push）ステップへ進みます。
     goto :push_step
 )
 
 echo [2/3] コミットを作成中...
-:: コミットメッセージにスペースを含めるため引用符で囲む
+:: コミット
 git commit -m "Auto-update: %DATE% %TIME%"
 
 :push_step
 echo [3/3] GitHubへ送信中 (mainブランチ)...
-:: --force を使わず、安全にプッシュ（必要に応じて git pull を促すメッセージが出るようにする）
+:: プッシュを実行
 git push origin main
 
 if %errorlevel% neq 0 (
     echo.
     echo [ERROR] デプロイに失敗しました。
-    echo 原因の可能性:
-    echo 1. ネットワーク環境の問題
-    echo 2. GitHubの認証エラー (ログインが必要かもしれません)
-    echo 3. リモート側に新しい変更がある (git pull が必要)
     echo.
-    echo 詳細を確認するには、コマンドプロンプトで直接 "git push origin main" を実行してください。
+    echo 【確認点】
+    echo ・一度「git pull origin main」を実行して競合を解消してください。
+    echo ・ブラウザ等でGitHubへのログイン画面が出ていないか確認してください。
+    echo ・コマンドプロンプトで直接「git push origin main」を叩いてエラーを確認してください。
     color 0C
 ) else (
     echo.
