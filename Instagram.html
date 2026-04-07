@@ -260,7 +260,7 @@ function App() {
         contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: imageData.mimeType, data: imageData.base64 } }] }],
         generationConfig: { responseMimeType: "application/json" }
       };
-      const result = await generateWithRetry('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent', body);
+      const result = await generateWithRetry('/api/ai', body);
       const data = JSON.parse(result.candidates?.[0]?.content?.parts?.[0]?.text || "{}");
       if (data.copies && Array.isArray(data.copies)) setSuggestedCopies(data.copies);
       if (data.category) setCategoryText(String(data.category));
@@ -281,7 +281,7 @@ function App() {
         contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: imageData.mimeType, data: imageData.base64 } }] }],
         generationConfig: { responseModalities: ["IMAGE"] }
       };
-      const result = await generateWithRetry('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent', body);
+      const result = await generateWithRetry('/api/ai', body);
       const base64Image = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
       if (!base64Image) throw new Error('生成失敗');
       setGeneratedImage(`data:image/jpeg;base64,${base64Image}`);
@@ -780,7 +780,7 @@ function App() {
         contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: imageData.mimeType, data: imageData.base64 } }] }],
         generationConfig: { responseMimeType: "application/json" }
       };
-      const result = await generateWithRetry('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent', body);
+      const result = await generateWithRetry('/api/ai', body);
       const data = JSON.parse(result.candidates?.[0]?.content?.parts?.[0]?.text || "{}");
       if (data.copies && Array.isArray(data.copies)) setSuggestedCopies(data.copies);
       if (data.category) setCategoryText(String(data.category));
@@ -801,7 +801,7 @@ function App() {
         contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: imageData.mimeType, data: imageData.base64 } }] }],
         generationConfig: { responseModalities: ["IMAGE"] }
       };
-      const result = await generateWithRetry('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent', body);
+      const result = await generateWithRetry('/api/ai', body);
       const base64Image = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
       if (!base64Image) throw new Error('生成失敗');
       setGeneratedImage(`data:image/jpeg;base64,${base64Image}`);
