@@ -17,12 +17,11 @@ export default async function handler(req, res) {
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // クライアントからの指定があればそれを使用し、なければ汎用的なモデルを使用
-    const requestedModel = req.body.model || "gemini-2.0-flash-exp"; 
+    // クライアントからの指定があればそれを使用し、なければ用途に応じてモデルを選択
+    // gemini-2.0-flash-exp はマルチモーダルに強いが、純粋な翻訳などは 1.5-flash が安定
+    const isMultimodal = !!(req.body.image || req.body.mask || (req.body.contents && JSON.stringify(req.body.contents).includes("inlineData")));
+    const requestedModel = req.body.model || (isMultimodal ? "gemini-2.0-flash-exp" : "gemini-1.5-flash"); 
     
-    // Imagen などの「predict」系リクエストの暫定対応（必要に応じてモデルを切り替え）
-    // 実際にはImagen 3/4もgenerateContentで抽象化できるモデルが増えていますが、
-    // ここでは20以上のツールの多様な用途に応えるため、常に最新のマルチモーダルモデルを使用します。
     const model = genAI.getGenerativeModel({ model: requestedModel });
 
     let result;
@@ -31,13 +30,12 @@ export default async function handler(req, res) {
     if (req.body.contents) {
       result = await model.generateContent({
         contents: req.body.contents,
-        generationConfig: req.body.generationConfig || { responseModalities: ["TEXT", "IMAGE"] },
+        generationConfig: req.body.generationConfig, // 呼び出し側の明示的な指定を優先
         safetySettings: req.body.safetySettings
       });
     } 
     // B. Imagen 互換形式 (instances パラメータなど)
     else if (req.body.instances) {
-        // Imagen リクエストを Gemini 2.0 にマッピング（画像生成能力を持つモデルに転送）
         const prompt = req.body.instances.prompt || req.body.instances[0].prompt;
         result = await model.generateContent({
             contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -68,30 +66,33 @@ export default async function handler(req, res) {
         });
       }
 
+      const config = (image || mask) ? { responseModalities: ["IMAGE", "TEXT"] } : {};
       result = await model.generateContent({
         contents: [{ role: "user", parts }],
-        generationConfig: {
-            responseModalities: ["IMAGE", "TEXT"]
-        }
+        generationConfig: config
       });
     }
 
     const response = await result.response;
     
+    // 検証
+    if (!response.candidates || response.candidates.length === 0) {
+      throw new Error("AI returned no candidates. This may be due to safety filters.");
+    }
+
     // 画像レスポンスの抽出 (inlineData)
     const partWithImage = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
     if (partWithImage) {
-      // 既存ツールとの互換性のため、複数の形式で画像データを返す
       return res.status(200).json({ 
         image: partWithImage.inlineData.data,
-        bytesBase64Encoded: partWithImage.inlineData.data, // Imagen互換
-        predictions: [{ bytesBase64Encoded: partWithImage.inlineData.data }], // Predict互換
+        bytesBase64Encoded: partWithImage.inlineData.data,
+        predictions: [{ bytesBase64Encoded: partWithImage.inlineData.data }],
         candidates: response.candidates 
       });
     }
 
     // 通常のテキストレスポンス
-    const text = response.text();
+    const text = response.text ? response.text() : response.candidates[0].content.parts[0].text;
     res.status(200).json({ 
       text, 
       candidates: response.candidates 
