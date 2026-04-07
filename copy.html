@@ -1,7 +1,142 @@
-import React, { useState, useRef } from 'react';
-import { Sparkles, Copy, RefreshCw, ShoppingBag, CheckCircle, AlertCircle, Trash2, Image as ImageIcon, Video, X, PenTool, List, Star, Link as LinkIcon, Upload, AlertTriangle, Camera, Instagram } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App - Linklabo AI Tool</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100">
+    <div id="root"></div>
 
-export default function App() {
+    <script type="text/babel">
+        const { useState, useRef, useEffect, useMemo } = React;
+
+        // --- Lucide Icon Helper ---
+        // Replace Lucide components with a wrapper that uses lucide-static
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const ref = useRef(null);
+            useEffect(() => {
+                if (ref.current) {
+                    const icon = lucide.icons[name];
+                    if (icon) {
+                        const svg = lucide.createIcons({
+                            icons: { [name]: icon },
+                            nameAttr: 'data-lucide',
+                            attrs: { 'stroke-width': 2, width: size, height: size, class: className }
+                        });
+                    }
+                }
+            }, [name, size, className]);
+            return <i ref={ref} data-lucide={name.toLowerCase()} className={className} style={ { width: size, height: size, display: 'inline-block' } }></i>;
+        };
+
+        // Mock Lucide components for the React code
+        const Lucide = {
+            Upload: (props) => <Icon name="Upload" {...props} />,
+            Download: (props) => <Icon name="Download" {...props} />,
+            Wand2: (props) => <Icon name="Wand2" {...props} />,
+            Image: (props) => <Icon name="Image" {...props} />,
+            Sparkles: (props) => <Icon name="Sparkles" {...props} />,
+            RefreshCw: (props) => <Icon name="RefreshCw" {...props} />,
+            X: (props) => <Icon name="X" {...props} />,
+            Palette: (props) => <Icon name="Palette" {...props} />,
+            Zap: (props) => <Icon name="Zap" {...props} />,
+            AlertTriangle: (props) => <Icon name="AlertTriangle" {...props} />,
+            CheckCircle: (props) => <Icon name="CheckCircle" {...props} />,
+            Info: (props) => <Icon name="Info" {...props} />,
+            XCircle: (props) => <Icon name="XCircle" {...props} />,
+            Settings: (props) => <Icon name="Settings" {...props} />,
+            Printer: (props) => <Icon name="Printer" {...props} />,
+            BarChart: (props) => <Icon name="BarChart" {...props} />,
+            Layers: (props) => <Icon name="Layers" {...props} />,
+            PaintBucket: (props) => <Icon name="PaintBucket" {...props} />,
+            Eraser: (props) => <Icon name="Eraser" {...props} />,
+            Maximize: (props) => <Icon name="Maximize" {...props} />,
+            ZoomIn: (props) => <Icon name="ZoomIn" {...props} />,
+            ZoomOut: (props) => <Icon name="ZoomOut" {...props} />,
+            Scan: (props) => <Icon name="Scan" {...props} />,
+            Flame: (props) => <Icon name="Flame" {...props} />,
+            ChevronRight: (props) => <Icon name="ChevronRight" {...props} />,
+            ChevronLeft: (props) => <Icon name="ChevronLeft" {...props} />,
+            Languages: (props) => <Icon name="Languages" {...props} />,
+            Copy: (props) => <Icon name="Copy" {...props} />,
+            Check: (props) => <Icon name="Check" {...props} />,
+            Type: (props) => <Icon name="Type" {...props} />,
+            Volume2: (props) => <Icon name="Volume2" {...props} />,
+            Mic: (props) => <Icon name="Mic" {...props} />,
+            Send: (props) => <Icon name="Send" {...props} />,
+            Trash2: (props) => <Icon name="Trash2" {...props} />,
+            Plus: (props) => <Icon name="Plus" {...props} />,
+            Minus: (props) => <Icon name="Minus" {...props} />,
+            HelpCircle: (props) => <Icon name="HelpCircle" {...props} />,
+            ShieldCheck: (props) => <Icon name="ShieldCheck" {...props} />,
+            Lock: (props) => <Icon name="Lock" {...props} />,
+            Eye: (props) => <Icon name="Eye" {...props} />,
+            History: (props) => <Icon name="History" {...props} />,
+            Share2: (props) => <Icon name="Share2" {...props} />,
+            ShoppingCart: (props) => <Icon name="ShoppingCart" {...props} />,
+            Heart: (props) => <Icon name="Heart" {...props} />,
+            Star: (props) => <Icon name="Star" {...props} />,
+            User: (props) => <Icon name="User" {...props} />,
+            Mail: (props) => <Icon name="Mail" {...props} />,
+            Phone: (props) => <Icon name="Phone" {...props} />,
+            MapPin: (props) => <Icon name="MapPin" {...props} />,
+            Calendar: (props) => <Icon name="Calendar" {...props} />,
+            Clock: (props) => <Icon name="Clock" {...props} />,
+            Tag: (props) => <Icon name="Tag" {...props} />,
+            Search: (props) => <Icon name="Search" {...props} />,
+            Filter: (props) => <Icon name="Filter" {...props} />,
+            SortAsc: (props) => <Icon name="SortAsc" {...props} />,
+            SortDesc: (props) => <Icon name="SortDesc" {...props} />,
+            MoreHorizontal: (props) => <Icon name="MoreHorizontal" {...props} />,
+            MoreVertical: (props) => <Icon name="MoreVertical" {...props} />,
+            Grid: (props) => <Icon name="Grid" {...props} />,
+            List: (props) => <Icon name="List" {...props} />,
+            ExternalLink: (props) => <Icon name="ExternalLink" {...props} />,
+            Ghost: (props) => <Icon name="Ghost" {...props} />,
+            Scissors: (props) => <Icon name="Scissors" {...props} />,
+            Briefcase: (props) => <Icon name="Briefcase" {...props} />,
+            Coins: (props) => <Icon name="Coins" {...props} />,
+            MessageSquare: (props) => <Icon name="MessageSquare" {...props} />,
+            Edit3: (props) => <Icon name="Edit3" {...props} />,
+            FileText: (props) => <Icon name="FileText" {...props} />,
+            EyeOff: (props) => <Icon name="EyeOff" {...props} />,
+            Moon: (props) => <Icon name="Moon" {...props} />,
+            Sun: (props) => <Icon name="Sun" {...props} />,
+            Menu: (props) => <Icon name="Menu" {...props} />,
+            Smartphone: (props) => <Icon name="Smartphone" {...props} />,
+            Instagram: (props) => <Icon name="Instagram" {...props} />,
+            Facebook: (props) => <Icon name="Facebook" {...props} />,
+            Twitter: (props) => <Icon name="Twitter" {...props} />,
+            Chrome: (props) => <Icon name="Chrome" {...props} />,
+            CreditCard: (props) => <Icon name="CreditCard" {...props} />,
+            PlusCircle: (props) => <Icon name="PlusCircle" {...props} />,
+            MinusCircle: (props) => <Icon name="MinusCircle" {...props} />,
+            Layout: (props) => <Icon name="Layout" {...props} />,
+            Box: (props) => <Icon name="Box" {...props} />,
+            Brush: (props) => <Icon name="Brush" {...props} />,
+            Gem: (props) => <Icon name="Gem" {...props} />,
+            Coffee: (props) => <Icon name="Coffee" {...props} />,
+            Code: (props) => <Icon name="Code" {...props} />,
+            Music: (props) => <Icon name="Music" {...props} />,
+            Video: (props) => <Icon name="Video" {...props} />,
+            Play: (props) => <Icon name="Play" {...props} />,
+            Pause: (props) => <Icon name="Pause" {...props} />,
+            Link: (props) => <Icon name="Link" {...props} />,
+        };
+
+        // Replace direct Lucide imports in the original code
+        // 
+function App() {
   const [productName, setProductName] = useState('');
   const [features, setFeatures] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
@@ -722,3 +857,826 @@ ${generatedContent.hashtags}
     </div>
   );
 }
+
+        const Upload = Lucide.Upload;
+        const Download = Lucide.Download;
+        const Wand2 = Lucide.Wand2;
+        const Image = Lucide.Image;
+        const Sparkles = Lucide.Sparkles;
+        const RefreshCw = Lucide.RefreshCw;
+        const X = Lucide.X;
+        const Palette = Lucide.Palette;
+        const Zap = Lucide.Zap;
+        const AlertTriangle = Lucide.AlertTriangle;
+        const CheckCircle = Lucide.CheckCircle;
+        const Info = Lucide.Info;
+        const XCircle = Lucide.XCircle;
+        const Settings = Lucide.Settings;
+        const Printer = Lucide.Printer;
+        const BarChart = Lucide.BarChart;
+        const Layers = Lucide.Layers;
+        const PaintBucket = Lucide.PaintBucket;
+        const Eraser = Lucide.Eraser;
+        const Maximize = Lucide.Maximize;
+        const ZoomIn = Lucide.ZoomIn;
+        const ZoomOut = Lucide.ZoomOut;
+        const Scan = Lucide.Scan;
+        const Flame = Lucide.Flame;
+        const ChevronRight = Lucide.ChevronRight;
+        const ChevronLeft = Lucide.ChevronLeft;
+        const Languages = Lucide.Languages;
+        const Copy = Lucide.Copy;
+        const Check = Lucide.Check;
+        const Type = Lucide.Type;
+        const Volume2 = Lucide.Volume2;
+        const Mic = Lucide.Mic;
+        const Send = Lucide.Send;
+        const Trash2 = Lucide.Trash2;
+        const Plus = Lucide.Plus;
+        const Minus = Lucide.Minus;
+        const HelpCircle = Lucide.HelpCircle;
+        const ShieldCheck = Lucide.ShieldCheck;
+        const Lock = Lucide.Lock;
+        const Eye = Lucide.Eye;
+        const History = Lucide.History;
+        const Share2 = Lucide.Share2;
+        const ShoppingCart = Lucide.ShoppingCart;
+        const Heart = Lucide.Heart;
+        const Star = Lucide.Star;
+        const User = Lucide.User;
+        const Mail = Lucide.Mail;
+        const Phone = Lucide.Phone;
+        const MapPin = Lucide.MapPin;
+        const Calendar = Lucide.Calendar;
+        const Clock = Lucide.Clock;
+        const Tag = Lucide.Tag;
+        const Search = Lucide.Search;
+        const Filter = Lucide.Filter;
+        const SortAsc = Lucide.SortAsc;
+        const SortDesc = Lucide.SortDesc;
+        const MoreHorizontal = Lucide.MoreHorizontal;
+        const MoreVertical = Lucide.MoreVertical;
+        const Grid = Lucide.Grid;
+        const List = Lucide.List;
+        const ExternalLink = Lucide.ExternalLink;
+        const Ghost = Lucide.Ghost;
+        const Scissors = Lucide.Scissors;
+        const Briefcase = Lucide.Briefcase;
+        const Coins = Lucide.Coins;
+        const MessageSquare = Lucide.MessageSquare;
+        const Edit3 = Lucide.Edit3;
+        const FileText = Lucide.FileText;
+        const EyeOff = Lucide.EyeOff;
+        const Moon = Lucide.Moon;
+        const Sun = Lucide.Sun;
+        const Menu = Lucide.Menu;
+        const Smartphone = Lucide.Smartphone;
+        const Instagram = Lucide.Instagram;
+        const Facebook = Lucide.Facebook;
+        const Twitter = Lucide.Twitter;
+        const Chrome = Lucide.Chrome;
+        const CreditCard = Lucide.CreditCard;
+        const PlusCircle = Lucide.PlusCircle;
+        const MinusCircle = Lucide.MinusCircle;
+        const Layout = Lucide.Layout;
+        const Box = Lucide.Box;
+        const Brush = Lucide.Brush;
+        const Gem = Lucide.Gem;
+        const Coffee = Lucide.Coffee;
+        const Code = Lucide.Code;
+        const Music = Lucide.Music;
+        const Video = Lucide.Video;
+        const Play = Lucide.Play;
+        const Pause = Lucide.Pause;
+        const Link = Lucide.Link;
+
+        
+function App() {
+  const [productName, setProductName] = useState('');
+  const [features, setFeatures] = useState('');
+  const [targetAudience, setTargetAudience] = useState('');
+  const [tone, setTone] = useState('親しみやすい');
+  const [isLaserEngravingAvailable, setIsLaserEngravingAvailable] = useState(false);
+  
+  // Image handling
+  const [activeTab, setActiveTab] = useState('file'); // 'file' or 'url'
+  const [selectedImage, setSelectedImage] = useState(null); // Base64 string (Image or Video)
+  const [imagePreview, setImagePreview] = useState(null); // URL for preview
+  const [mediaUrl, setMediaUrl] = useState('');
+  const [urlLoading, setUrlLoading] = useState(false);
+  
+  const [generatedContent, setGeneratedContent] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // Gemini API Key (Environment variable)
+  const apiKey = ""; 
+
+  const tones = [
+    { value: '親しみやすい', label: '親しみやすい・フレンドリー' },
+    { value: '高級感', label: '高級感・ラグジュアリー' },
+    { value: 'プロフェッショナル', label: '信頼感・プロフェッショナル' },
+    { value: 'エモーショナル', label: '感情的・エモーショナル' },
+    { value: 'シンプル', label: 'シンプル・ミニマル' },
+    { value: '元気・ポップ', label: '元気・ポップ' },
+  ];
+
+  const processFile = (file) => {
+    if (!file) return;
+
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+
+    if (!isImage && !isVideo) {
+      setError('画像または動画ファイルを選択してください。');
+      return;
+    }
+
+    // ブラウザでのBase64処理制限とAPI制限を考慮してサイズチェック（50MBに変更）
+    if (file.size > 50 * 1024 * 1024) {
+      setError('ファイルサイズが大きすぎます（50MB以内）。動画の代わりに「スクリーンショット画像」を使うとスムーズです。');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result.split(',')[1]; // Remove data URL prefix
+      setSelectedImage({
+        data: base64String,
+        mimeType: file.type
+      });
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+    setError('');
+  };
+
+  const handleUrlLoad = async () => {
+    if (!mediaUrl) return;
+    setUrlLoading(true);
+    setError('');
+
+    try {
+      // 外部URLからのfetchはCORS制限により失敗することが多い
+      const response = await fetch(mediaUrl, { mode: 'cors' }).catch(err => {
+         // ネットワークエラー（CORSブロックなど）をキャッチ
+         throw new Error('CORS_ERROR');
+      });
+
+      if (!response.ok) throw new Error('FETCH_ERROR');
+
+      const blob = await response.blob();
+      
+      // Check content type
+      if (!blob.type.startsWith('image/') && !blob.type.startsWith('video/')) {
+        throw new Error('INVALID_TYPE');
+      }
+
+      if (blob.size > 50 * 1024 * 1024) {
+        throw new Error('SIZE_ERROR');
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result.split(',')[1];
+        setSelectedImage({
+          data: base64String,
+          mimeType: blob.type
+        });
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(blob);
+      setMediaUrl(''); // Clear input on success
+
+    } catch (err) {
+      console.error("Image load error:", err);
+      
+      let errorMsg = '画像の読み込みに失敗しました。';
+      
+      if (err.message === 'CORS_ERROR' || err.message === 'Failed to fetch') {
+        errorMsg = 'セキュリティ制限により読み込めませんでした。動画やWebページの「スクリーンショット（画像）」を撮ってアップロードするのがおすすめです。';
+      } else if (err.message === 'INVALID_TYPE') {
+        errorMsg = '指定されたURLは画像または動画ではないようです。';
+      } else if (err.message === 'SIZE_ERROR') {
+        errorMsg = 'ファイルサイズが大きすぎます（50MB以内）。動画の代わりに「スクリーンショット画像」をご利用ください。';
+      }
+
+      setError(errorMsg);
+    } finally {
+      setUrlLoading(false);
+    }
+  };
+
+  const handleImageUpload = (e) => {
+    processFile(e.target.files[0]);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    processFile(e.dataTransfer.files[0]);
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!productName && !features && !selectedImage) {
+      setError('商品名、特徴、または画像・動画を入力してください。');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setGeneratedContent(null);
+    setCopySuccess(false);
+
+    let prompt = `
+      あなたはプロのECサイト運営者兼コピーライターです。以下の情報を元に、商品ページ（LP）に掲載する魅力的なコンテンツと、SNS（Instagramリール）用の投稿文を作成してください。
+      顧客が購入したくなるような、ベネフィットを強調した構成にしてください。
+
+      【基本情報】
+      ・商品名: ${productName || '（メディアから推測してください）'}
+      ・特徴・キーワード: ${features || '（メディアから推測してください）'}
+      ・レーザー彫刻・名入れオプション: ${isLaserEngravingAvailable ? '対応あり（重要：世界に一つだけのオリジナルギフトとして、名入れやメッセージ刻印ができる点を強くアピールしてください）' : 'なし'}
+      ・ターゲット層: ${targetAudience || '指定なし'}
+      ・希望するトーン: ${tone}
+    `;
+
+    if (selectedImage) {
+      const isVideo = selectedImage.mimeType.startsWith('video/');
+      const mediaTypeJP = isVideo ? '動画' : '画像';
+
+      prompt += `
+      【${mediaTypeJP}分析指示】
+      添付された商品${mediaTypeJP}を詳細に分析してください。
+      ${isVideo ? '動画の動き、商品の使用感、アングル変化、' : ''}色合い、素材感、パッケージのデザイン、形状、雰囲気などの視覚的特徴を捉え、それを魅力的な言葉に変換して商品説明に盛り込んでください。
+      商品名や特徴が入力されていない場合は、${mediaTypeJP}からそれらを推測して補完してください。
+      `;
+    }
+
+    prompt += `
+      【出力フォーマット】
+      以下の形式のJSONのみを出力してください（マークダウンのコードブロックは不要です）。
+      {
+        "catchphrase": "短くてインパクトのあるキャッチコピー（1行）",
+        "lead": "興味を惹く導入文（共感を呼ぶ悩みや願望への訴求を含めて2-3行）",
+        "points": [
+          {"title": "魅力ポイント1の見出し", "content": "詳細な説明（メリット）"},
+          {"title": "魅力ポイント2の見出し", "content": "詳細な説明（メリット）"},
+          {"title": "魅力ポイント3の見出し", "content": "詳細な説明（メリット）"}
+        ],
+        "specs": "スペック・仕様情報（サイズ、素材、成分、内容量など）を箇条書き形式のテキストで",
+        "instagram_caption": "Instagramリール投稿用のキャプション。絵文字を適度に使用し、親しみやすく、『保存して後で見返してね』や『タップして詳細をチェック』などアクションを促す言葉を含めてください。ハッシュタグは含めないでください（別途生成します）。",
+        "hashtags": "SNS用のハッシュタグ（5個程度、#を含むスペース区切りの文字列 例: '#tag1 #tag2'）"
+      }
+    `;
+
+    try {
+      const result = await callGeminiAPI(prompt, selectedImage);
+      const cleanText = result.replace(/```json|```/g, '').trim();
+      let jsonContent = JSON.parse(cleanText);
+
+      // Data normalization
+      if (Array.isArray(jsonContent.hashtags)) {
+        jsonContent.hashtags = jsonContent.hashtags.join(' ');
+      } else if (typeof jsonContent.hashtags !== 'string') {
+        jsonContent.hashtags = '';
+      }
+
+      if (!Array.isArray(jsonContent.points)) {
+        jsonContent.points = [];
+      }
+
+      ['catchphrase', 'lead', 'specs', 'instagram_caption'].forEach(field => {
+        if (typeof jsonContent[field] !== 'string') {
+           if (Array.isArray(jsonContent[field])) {
+             jsonContent[field] = jsonContent[field].join('\n');
+           } else {
+             jsonContent[field] = String(jsonContent[field] || '');
+           }
+        }
+      });
+
+      setGeneratedContent(jsonContent);
+    } catch (err) {
+      console.error(err);
+      setError('生成中にエラーが発生しました。もう一度お試しください。ファイルサイズが大きい場合は小さくして試してください。');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const callGeminiAPI = async (prompt, image = null, retryCount = 0) => {
+    const url = `/api/ai`;
+    
+    const parts = [{ text: prompt }];
+    
+    if (image) {
+      parts.push({
+        inlineData: {
+          mimeType: image.mimeType,
+          data: image.data
+        }
+      });
+    }
+
+    const payload = {
+      contents: [{ parts: parts }],
+      generationConfig: {
+        responseMimeType: "application/json"
+      }
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
+      const data = await response.json();
+      return data.candidates[0].content.parts[0].text;
+
+    } catch (error) {
+      if (retryCount < 3) {
+        const delay = Math.pow(2, retryCount) * 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return callGeminiAPI(prompt, image, retryCount + 1);
+      }
+      throw error;
+    }
+  };
+
+  const copyToClipboard = () => {
+    if (!generatedContent) return;
+    
+    let pointsText = "";
+    if (generatedContent.points && generatedContent.points.length > 0) {
+      pointsText = generatedContent.points.map((p, i) => `【ポイント${i+1}】${p.title}\n${p.content}`).join('\n\n');
+    }
+
+    const textToCopy = `
+${generatedContent.catchphrase}
+
+${generatedContent.lead}
+
+${pointsText}
+
+【仕様・スペック】
+${generatedContent.specs}
+
+--- Instagram投稿用 ---
+${generatedContent.instagram_caption}
+
+${generatedContent.hashtags}
+    `.trim();
+
+    const textArea = document.createElement("textarea");
+    textArea.value = textToCopy;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Copy failed', err);
+    }
+    document.body.removeChild(textArea);
+  };
+
+  const clearForm = () => {
+    setProductName('');
+    setFeatures('');
+    setTargetAudience('');
+    setTone('親しみやすい');
+    setIsLaserEngravingAvailable(false);
+    removeImage();
+    setGeneratedContent(null);
+    setError('');
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8">
+      <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        {/* Input Section */}
+        <div className="space-y-6">
+          <header className="mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="bg-indigo-600 p-2 rounded-lg">
+                <ShoppingBag className="w-6 h-6 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900">AIショップコピーライター</h1>
+            </div>
+            <p className="text-gray-500">
+              商品の写真や動画、情報を入力するだけで、ECサイトにそのまま掲載できる本格的な商品ページを作成します。
+            </p>
+          </header>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-5">
+            
+            {/* Image/Video Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                商品画像・動画 <span className="text-gray-400 text-xs font-normal ml-1">（任意・AIが分析します）</span>
+              </label>
+
+              {!imagePreview ? (
+                <>
+                  <div className="flex border-b border-gray-200 mb-0">
+                    <button
+                      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'file' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                      onClick={() => { setActiveTab('file'); setError(''); }}
+                    >
+                      <Upload className="w-4 h-4" /> アップロード
+                    </button>
+                    <button
+                      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'url' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                      onClick={() => { setActiveTab('url'); setError(''); }}
+                    >
+                      <LinkIcon className="w-4 h-4" /> URL入力
+                    </button>
+                  </div>
+
+                  <div className="mt-4">
+                    {activeTab === 'file' ? (
+                      <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-gray-500 cursor-pointer transition-all h-40 ${
+                          isDragging 
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-500' 
+                            : 'border-gray-300 hover:border-indigo-500 hover:bg-indigo-50'
+                        }`}
+                      >
+                        <div className="flex gap-2 mb-2">
+                          <ImageIcon className={`w-8 h-8 ${isDragging ? 'text-indigo-500' : 'text-gray-400'}`} />
+                          <Video className={`w-8 h-8 ${isDragging ? 'text-indigo-500' : 'text-gray-400'}`} />
+                        </div>
+                        <p className="text-sm font-medium">クリックして画像または動画をアップロード</p>
+                        <p className={`text-xs mt-1 ${isDragging ? 'text-indigo-400' : 'text-gray-400'}`}>
+                          ドラッグ＆ドロップも可能（50MB以内）
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+                        <label className="text-xs text-gray-500 mb-1 block">画像または動画のURL</label>
+                        <div className="flex gap-2 mb-2">
+                          <input
+                            type="text"
+                            value={mediaUrl}
+                            onChange={(e) => setMediaUrl(e.target.value)}
+                            placeholder="https://example.com/image.jpg"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                            onKeyDown={(e) => e.key === 'Enter' && handleUrlLoad()}
+                          />
+                          <button
+                            onClick={handleUrlLoad}
+                            disabled={!mediaUrl || urlLoading}
+                            className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                          >
+                            {urlLoading ? '読込中...' : '読み込む'}
+                          </button>
+                        </div>
+                        <div className="flex gap-2 items-start text-xs text-amber-600 bg-amber-50 p-2 rounded">
+                          <AlertTriangle className="w-4 h-4 shrink-0" />
+                          <p>
+                            Webサイトの制限で読み込めないことが多いです。<br/>
+                            <strong>解決策：</strong>動画のスクショを撮って「アップロード」してください。
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="relative rounded-lg overflow-hidden border border-gray-200 group bg-black mt-2">
+                  {selectedImage?.mimeType?.startsWith('video/') ? (
+                    <video 
+                      src={imagePreview} 
+                      className="w-full h-48 object-contain" 
+                      controls 
+                    />
+                  ) : (
+                    <img 
+                      src={imagePreview} 
+                      alt="Preview" 
+                      className="w-full h-48 object-cover object-center" 
+                    />
+                  )}
+                  
+                  <div className="absolute top-2 right-2 flex gap-2">
+                    <button 
+                      onClick={removeImage}
+                      className="bg-white/90 p-2 rounded-full text-red-500 hover:bg-red-50 transition-colors shadow-sm"
+                      title="ファイルを削除"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                accept="image/*,video/*"
+                className="hidden"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                商品名 <span className="text-gray-400 text-xs font-normal ml-1">（メディアがある場合は省略可）</span>
+              </label>
+              <input
+                type="text"
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+                placeholder="例: オーガニック・リラックス・ティー"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                特徴・キーワード <span className="text-gray-400 text-xs font-normal ml-1">（メディアがある場合は省略可）</span>
+              </label>
+              <textarea
+                value={features}
+                onChange={(e) => setFeatures(e.target.value)}
+                rows={3}
+                placeholder="例: ノンカフェイン、瀬戸内レモン使用、ギフトにおすすめ"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all resize-none"
+              />
+              
+              <div 
+                className={`mt-3 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                  isLaserEngravingAvailable 
+                    ? 'bg-amber-50 border-amber-200 text-amber-900' 
+                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+                onClick={() => setIsLaserEngravingAvailable(!isLaserEngravingAvailable)}
+              >
+                <div className={`flex items-center justify-center w-5 h-5 rounded border ${isLaserEngravingAvailable ? 'bg-amber-500 border-amber-500' : 'bg-white border-gray-300'}`}>
+                  {isLaserEngravingAvailable && <CheckCircle className="w-3.5 h-3.5 text-white" />}
+                </div>
+                <div className="flex items-center gap-2 select-none">
+                  <PenTool className={`w-4 h-4 ${isLaserEngravingAvailable ? 'text-amber-600' : 'text-gray-400'}`} />
+                  <span className="text-sm font-medium">レーザー彫刻・名入れ対応</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  ターゲット層
+                </label>
+                <input
+                  type="text"
+                  value={targetAudience}
+                  onChange={(e) => setTargetAudience(e.target.value)}
+                  placeholder="例: 30代の働く女性"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  文章のトーン
+                </label>
+                <div className="relative">
+                  <select
+                    value={tone}
+                    onChange={(e) => setTone(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none appearance-none bg-white transition-all"
+                  >
+                    {tones.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {error && (
+              <div className="flex items-start gap-2 text-red-600 bg-red-50 p-3 rounded-lg text-sm">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={handleGenerate}
+                disabled={loading}
+                className={`flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition-all shadow-md hover:shadow-lg ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                    商品ページを作成中...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    商品ページを作成する
+                  </>
+                )}
+              </button>
+              
+              <button
+                onClick={clearForm}
+                className="px-4 py-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                title="入力をクリア"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Output Section */}
+        <div className="flex flex-col h-full">
+          <div className="flex items-center justify-between mb-2 h-8">
+            <h2 className="text-lg font-semibold text-gray-800">生成結果</h2>
+            {generatedContent && (
+              <button
+                onClick={copyToClipboard}
+                className={`flex items-center gap-1.5 text-sm px-3 py-1 rounded-full transition-all ${
+                  copySuccess 
+                    ? 'bg-green-100 text-green-700 font-medium' 
+                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                }`}
+              >
+                {copySuccess ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    コピーしました
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    コピー
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+
+          <div className={`flex-1 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden relative transition-all duration-500 ${loading ? 'opacity-80' : 'opacity-100'}`}>
+            {loading ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 z-10 space-y-4">
+                <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                <p className="text-indigo-600 font-medium animate-pulse">AIがページ構成を考えています...</p>
+              </div>
+            ) : null}
+
+            {!generatedContent && !loading ? (
+              <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-gray-400 p-8 text-center bg-gray-50/50">
+                <Sparkles className="w-12 h-12 mb-4 text-gray-300" />
+                <p className="text-lg font-medium text-gray-500">ここに商品ページの内容が表示されます</p>
+                <p className="text-sm mt-2">左側のフォームに入力して<br/>ボタンを押してください</p>
+              </div>
+            ) : generatedContent ? (
+              <div className="p-6 md:p-8 h-full overflow-y-auto custom-scrollbar space-y-8">
+                
+                {/* Catchphrase */}
+                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl border border-indigo-100">
+                  <p className="text-xs font-bold text-indigo-500 tracking-wider uppercase mb-2">キャッチコピー</p>
+                  <h3 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">
+                    {generatedContent.catchphrase}
+                  </h3>
+                </div>
+
+                {/* Lead */}
+                <div>
+                  <p className="text-xs font-bold text-gray-400 tracking-wider uppercase mb-2 flex items-center gap-2">
+                    <span className="w-1 h-1 bg-gray-400 rounded-full"></span>導入
+                  </p>
+                  <p className="text-gray-700 leading-relaxed text-lg">
+                    {generatedContent.lead}
+                  </p>
+                </div>
+
+                {/* Key Points */}
+                <div>
+                   <p className="text-xs font-bold text-gray-400 tracking-wider uppercase mb-3 flex items-center gap-2">
+                    <span className="w-1 h-1 bg-gray-400 rounded-full"></span>おすすめポイント
+                  </p>
+                  <div className="space-y-4">
+                    {generatedContent.points && generatedContent.points.map((point, i) => (
+                      <div key={i} className="flex gap-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                         <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-amber-100 text-amber-600 rounded-full font-bold">
+                           {i + 1}
+                         </div>
+                         <div>
+                           <h4 className="font-bold text-gray-800 mb-1">{point.title}</h4>
+                           <p className="text-gray-600 text-sm leading-relaxed">{point.content}</p>
+                         </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Specs */}
+                <div>
+                  <p className="text-xs font-bold text-gray-400 tracking-wider uppercase mb-2 flex items-center gap-2">
+                    <span className="w-1 h-1 bg-gray-400 rounded-full"></span>仕様・スペック
+                  </p>
+                  <div className="text-gray-600 leading-relaxed whitespace-pre-wrap bg-white p-5 rounded-lg border border-gray-200 text-sm font-mono">
+                    {generatedContent.specs}
+                  </div>
+                </div>
+
+                 {/* Instagram Caption */}
+                 {generatedContent.instagram_caption && (
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-xl border border-pink-100 relative overflow-hidden">
+                    <div className="flex items-center gap-2 mb-4 relative z-10">
+                      <div className="bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 text-white p-1.5 rounded-lg shadow-sm">
+                        <Instagram size={18} />
+                      </div>
+                      <span className="font-bold text-gray-800">Instagramリール用キャプション</span>
+                    </div>
+                    <div className="bg-white/80 p-4 rounded-lg text-gray-700 whitespace-pre-wrap leading-relaxed text-sm relative z-10 border border-white/50">
+                      {generatedContent.instagram_caption}
+                    </div>
+                  </div>
+                )}
+
+                {/* Hashtags */}
+                <div>
+                  <p className="text-xs font-bold text-gray-400 tracking-wider uppercase mb-2 flex items-center gap-2">
+                    <span className="w-1 h-1 bg-gray-400 rounded-full"></span>ハッシュタグ
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {(generatedContent.hashtags || '').split(/[ ,]+/).filter(tag => tag.trim() !== '').map((tag, i) => (
+                      <span key={i} className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-sm font-medium hover:bg-indigo-100 transition-colors cursor-pointer">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #cbd5e1;
+          border-radius: 20px;
+          border: 3px solid transparent;
+          background-clip: content-box;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background-color: #94a3b8;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

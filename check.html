@@ -1,6 +1,141 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { AlertTriangle, CheckCircle, Info, Image as ImageIcon, XCircle, Settings, Zap, Printer, Upload, BarChart, Layers, PaintBucket, Eraser, Download, Maximize, ZoomIn, ZoomOut, RefreshCcw, Scan, Wand2, Flame } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaserCheckApp - Linklabo AI Tool</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100">
+    <div id="root"></div>
 
+    <script type="text/babel">
+        const { useState, useRef, useEffect, useMemo } = React;
+
+        // --- Lucide Icon Helper ---
+        // Replace Lucide components with a wrapper that uses lucide-static
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const ref = useRef(null);
+            useEffect(() => {
+                if (ref.current) {
+                    const icon = lucide.icons[name];
+                    if (icon) {
+                        const svg = lucide.createIcons({
+                            icons: { [name]: icon },
+                            nameAttr: 'data-lucide',
+                            attrs: { 'stroke-width': 2, width: size, height: size, class: className }
+                        });
+                    }
+                }
+            }, [name, size, className]);
+            return <i ref={ref} data-lucide={name.toLowerCase()} className={className} style={ { width: size, height: size, display: 'inline-block' } }></i>;
+        };
+
+        // Mock Lucide components for the React code
+        const Lucide = {
+            Upload: (props) => <Icon name="Upload" {...props} />,
+            Download: (props) => <Icon name="Download" {...props} />,
+            Wand2: (props) => <Icon name="Wand2" {...props} />,
+            Image: (props) => <Icon name="Image" {...props} />,
+            Sparkles: (props) => <Icon name="Sparkles" {...props} />,
+            RefreshCw: (props) => <Icon name="RefreshCw" {...props} />,
+            X: (props) => <Icon name="X" {...props} />,
+            Palette: (props) => <Icon name="Palette" {...props} />,
+            Zap: (props) => <Icon name="Zap" {...props} />,
+            AlertTriangle: (props) => <Icon name="AlertTriangle" {...props} />,
+            CheckCircle: (props) => <Icon name="CheckCircle" {...props} />,
+            Info: (props) => <Icon name="Info" {...props} />,
+            XCircle: (props) => <Icon name="XCircle" {...props} />,
+            Settings: (props) => <Icon name="Settings" {...props} />,
+            Printer: (props) => <Icon name="Printer" {...props} />,
+            BarChart: (props) => <Icon name="BarChart" {...props} />,
+            Layers: (props) => <Icon name="Layers" {...props} />,
+            PaintBucket: (props) => <Icon name="PaintBucket" {...props} />,
+            Eraser: (props) => <Icon name="Eraser" {...props} />,
+            Maximize: (props) => <Icon name="Maximize" {...props} />,
+            ZoomIn: (props) => <Icon name="ZoomIn" {...props} />,
+            ZoomOut: (props) => <Icon name="ZoomOut" {...props} />,
+            Scan: (props) => <Icon name="Scan" {...props} />,
+            Flame: (props) => <Icon name="Flame" {...props} />,
+            ChevronRight: (props) => <Icon name="ChevronRight" {...props} />,
+            ChevronLeft: (props) => <Icon name="ChevronLeft" {...props} />,
+            Languages: (props) => <Icon name="Languages" {...props} />,
+            Copy: (props) => <Icon name="Copy" {...props} />,
+            Check: (props) => <Icon name="Check" {...props} />,
+            Type: (props) => <Icon name="Type" {...props} />,
+            Volume2: (props) => <Icon name="Volume2" {...props} />,
+            Mic: (props) => <Icon name="Mic" {...props} />,
+            Send: (props) => <Icon name="Send" {...props} />,
+            Trash2: (props) => <Icon name="Trash2" {...props} />,
+            Plus: (props) => <Icon name="Plus" {...props} />,
+            Minus: (props) => <Icon name="Minus" {...props} />,
+            HelpCircle: (props) => <Icon name="HelpCircle" {...props} />,
+            ShieldCheck: (props) => <Icon name="ShieldCheck" {...props} />,
+            Lock: (props) => <Icon name="Lock" {...props} />,
+            Eye: (props) => <Icon name="Eye" {...props} />,
+            History: (props) => <Icon name="History" {...props} />,
+            Share2: (props) => <Icon name="Share2" {...props} />,
+            ShoppingCart: (props) => <Icon name="ShoppingCart" {...props} />,
+            Heart: (props) => <Icon name="Heart" {...props} />,
+            Star: (props) => <Icon name="Star" {...props} />,
+            User: (props) => <Icon name="User" {...props} />,
+            Mail: (props) => <Icon name="Mail" {...props} />,
+            Phone: (props) => <Icon name="Phone" {...props} />,
+            MapPin: (props) => <Icon name="MapPin" {...props} />,
+            Calendar: (props) => <Icon name="Calendar" {...props} />,
+            Clock: (props) => <Icon name="Clock" {...props} />,
+            Tag: (props) => <Icon name="Tag" {...props} />,
+            Search: (props) => <Icon name="Search" {...props} />,
+            Filter: (props) => <Icon name="Filter" {...props} />,
+            SortAsc: (props) => <Icon name="SortAsc" {...props} />,
+            SortDesc: (props) => <Icon name="SortDesc" {...props} />,
+            MoreHorizontal: (props) => <Icon name="MoreHorizontal" {...props} />,
+            MoreVertical: (props) => <Icon name="MoreVertical" {...props} />,
+            Grid: (props) => <Icon name="Grid" {...props} />,
+            List: (props) => <Icon name="List" {...props} />,
+            ExternalLink: (props) => <Icon name="ExternalLink" {...props} />,
+            Ghost: (props) => <Icon name="Ghost" {...props} />,
+            Scissors: (props) => <Icon name="Scissors" {...props} />,
+            Briefcase: (props) => <Icon name="Briefcase" {...props} />,
+            Coins: (props) => <Icon name="Coins" {...props} />,
+            MessageSquare: (props) => <Icon name="MessageSquare" {...props} />,
+            Edit3: (props) => <Icon name="Edit3" {...props} />,
+            FileText: (props) => <Icon name="FileText" {...props} />,
+            EyeOff: (props) => <Icon name="EyeOff" {...props} />,
+            Moon: (props) => <Icon name="Moon" {...props} />,
+            Sun: (props) => <Icon name="Sun" {...props} />,
+            Menu: (props) => <Icon name="Menu" {...props} />,
+            Smartphone: (props) => <Icon name="Smartphone" {...props} />,
+            Instagram: (props) => <Icon name="Instagram" {...props} />,
+            Facebook: (props) => <Icon name="Facebook" {...props} />,
+            Twitter: (props) => <Icon name="Twitter" {...props} />,
+            Chrome: (props) => <Icon name="Chrome" {...props} />,
+            CreditCard: (props) => <Icon name="CreditCard" {...props} />,
+            PlusCircle: (props) => <Icon name="PlusCircle" {...props} />,
+            MinusCircle: (props) => <Icon name="MinusCircle" {...props} />,
+            Layout: (props) => <Icon name="Layout" {...props} />,
+            Box: (props) => <Icon name="Box" {...props} />,
+            Brush: (props) => <Icon name="Brush" {...props} />,
+            Gem: (props) => <Icon name="Gem" {...props} />,
+            Coffee: (props) => <Icon name="Coffee" {...props} />,
+            Code: (props) => <Icon name="Code" {...props} />,
+            Music: (props) => <Icon name="Music" {...props} />,
+            Video: (props) => <Icon name="Video" {...props} />,
+            Play: (props) => <Icon name="Play" {...props} />,
+            Pause: (props) => <Icon name="Pause" {...props} />,
+            Link: (props) => <Icon name="Link" {...props} />,
+        };
+
+        // Replace direct Lucide imports in the original code
+        // 
 // 型定義
 type MaterialType = 'wood' | 'leather' | 'aluminum' | 'stainless' | 'resin';
 type DesignType = 'text_fine' | 'text_bold' | 'logo_solid' | 'photo' | 'vector_line';
@@ -60,7 +195,7 @@ const hexToRgb = (hex: string) => {
   } : { r: 0, g: 0, b: 0 };
 };
 
-export default function LaserCheckApp() {
+function LaserCheckApp() {
   const [selectedMaterial, setSelectedMaterial] = useState<MaterialType | null>(null);
   const [selectedDesign, setSelectedDesign] = useState<DesignType | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -1113,3 +1248,1217 @@ export default function LaserCheckApp() {
     </div>
   );
 }
+
+        const Upload = Lucide.Upload;
+        const Download = Lucide.Download;
+        const Wand2 = Lucide.Wand2;
+        const Image = Lucide.Image;
+        const Sparkles = Lucide.Sparkles;
+        const RefreshCw = Lucide.RefreshCw;
+        const X = Lucide.X;
+        const Palette = Lucide.Palette;
+        const Zap = Lucide.Zap;
+        const AlertTriangle = Lucide.AlertTriangle;
+        const CheckCircle = Lucide.CheckCircle;
+        const Info = Lucide.Info;
+        const XCircle = Lucide.XCircle;
+        const Settings = Lucide.Settings;
+        const Printer = Lucide.Printer;
+        const BarChart = Lucide.BarChart;
+        const Layers = Lucide.Layers;
+        const PaintBucket = Lucide.PaintBucket;
+        const Eraser = Lucide.Eraser;
+        const Maximize = Lucide.Maximize;
+        const ZoomIn = Lucide.ZoomIn;
+        const ZoomOut = Lucide.ZoomOut;
+        const Scan = Lucide.Scan;
+        const Flame = Lucide.Flame;
+        const ChevronRight = Lucide.ChevronRight;
+        const ChevronLeft = Lucide.ChevronLeft;
+        const Languages = Lucide.Languages;
+        const Copy = Lucide.Copy;
+        const Check = Lucide.Check;
+        const Type = Lucide.Type;
+        const Volume2 = Lucide.Volume2;
+        const Mic = Lucide.Mic;
+        const Send = Lucide.Send;
+        const Trash2 = Lucide.Trash2;
+        const Plus = Lucide.Plus;
+        const Minus = Lucide.Minus;
+        const HelpCircle = Lucide.HelpCircle;
+        const ShieldCheck = Lucide.ShieldCheck;
+        const Lock = Lucide.Lock;
+        const Eye = Lucide.Eye;
+        const History = Lucide.History;
+        const Share2 = Lucide.Share2;
+        const ShoppingCart = Lucide.ShoppingCart;
+        const Heart = Lucide.Heart;
+        const Star = Lucide.Star;
+        const User = Lucide.User;
+        const Mail = Lucide.Mail;
+        const Phone = Lucide.Phone;
+        const MapPin = Lucide.MapPin;
+        const Calendar = Lucide.Calendar;
+        const Clock = Lucide.Clock;
+        const Tag = Lucide.Tag;
+        const Search = Lucide.Search;
+        const Filter = Lucide.Filter;
+        const SortAsc = Lucide.SortAsc;
+        const SortDesc = Lucide.SortDesc;
+        const MoreHorizontal = Lucide.MoreHorizontal;
+        const MoreVertical = Lucide.MoreVertical;
+        const Grid = Lucide.Grid;
+        const List = Lucide.List;
+        const ExternalLink = Lucide.ExternalLink;
+        const Ghost = Lucide.Ghost;
+        const Scissors = Lucide.Scissors;
+        const Briefcase = Lucide.Briefcase;
+        const Coins = Lucide.Coins;
+        const MessageSquare = Lucide.MessageSquare;
+        const Edit3 = Lucide.Edit3;
+        const FileText = Lucide.FileText;
+        const EyeOff = Lucide.EyeOff;
+        const Moon = Lucide.Moon;
+        const Sun = Lucide.Sun;
+        const Menu = Lucide.Menu;
+        const Smartphone = Lucide.Smartphone;
+        const Instagram = Lucide.Instagram;
+        const Facebook = Lucide.Facebook;
+        const Twitter = Lucide.Twitter;
+        const Chrome = Lucide.Chrome;
+        const CreditCard = Lucide.CreditCard;
+        const PlusCircle = Lucide.PlusCircle;
+        const MinusCircle = Lucide.MinusCircle;
+        const Layout = Lucide.Layout;
+        const Box = Lucide.Box;
+        const Brush = Lucide.Brush;
+        const Gem = Lucide.Gem;
+        const Coffee = Lucide.Coffee;
+        const Code = Lucide.Code;
+        const Music = Lucide.Music;
+        const Video = Lucide.Video;
+        const Play = Lucide.Play;
+        const Pause = Lucide.Pause;
+        const Link = Lucide.Link;
+
+        
+// 型定義
+type MaterialType = 'wood' | 'leather' | 'aluminum' | 'stainless' | 'resin';
+type DesignType = 'text_fine' | 'text_bold' | 'logo_solid' | 'photo' | 'vector_line';
+
+interface MaterialInfo {
+  id: MaterialType;
+  name: string;
+  laserType: 'Blue (455nm)' | 'Infrared (1064nm)' | 'Both';
+  description: string;
+  color: string; // シミュレーション用の地色
+  burnColor: string; // 焦げ色
+  textureType: 'wood' | 'noise' | 'metal' | 'smooth';
+  thermalDiffusion: number; // 熱拡散係数 (大きいほど滲む)
+}
+
+interface Advice {
+  level: 'success' | 'warning' | 'danger';
+  title: string;
+  message: string;
+}
+
+interface ImageAnalysisResult {
+  hasColor: boolean;
+  isLowContrast: boolean;
+  hasTransparency: boolean;
+  cornersAreTransparent: boolean;
+  cornersArePureWhite: boolean;
+  cornersAreNearWhite: boolean;
+  width: number;
+  height: number;
+  brightness: number;
+}
+
+// データ定数
+const MATERIALS: MaterialInfo[] = [
+  // 100mm程度でしっかり潰れるよう係数を調整
+  { id: 'wood', name: '木材 (Wood)', laserType: 'Blue (455nm)', description: '合板、無垢材など。青色レーザーを使用。', color: '#e3c099', burnColor: '#3e2723', textureType: 'wood', thermalDiffusion: 5.0 },
+  { id: 'leather', name: '革 (Leather)', laserType: 'Blue (455nm)', description: '本革、合皮。焦げや匂いが発生しやすい。', color: '#d2b48c', burnColor: '#251610', textureType: 'noise', thermalDiffusion: 6.0 },
+  { id: 'aluminum', name: 'アルミニウム', laserType: 'Infrared (1064nm)', description: '陽極酸化、塗装、または生のアルミ。赤外線が有効。', color: '#cfcfcf', burnColor: '#eeeeee', textureType: 'metal', thermalDiffusion: 0.5 },
+  { id: 'stainless', name: 'ステンレス', laserType: 'Infrared (1064nm)', description: '硬度が高い金属。赤外線レーザーを使用。', color: '#e0e0e0', burnColor: '#111111', textureType: 'metal', thermalDiffusion: 0.5 },
+  { id: 'resin', name: '樹脂・プラスチック', laserType: 'Both', description: 'アクリルやABSなど。素材によりレーザーの吸収率が異なる。', color: '#f5f5f5', burnColor: '#333333', textureType: 'smooth', thermalDiffusion: 3.0 },
+];
+
+const DESIGN_TYPES: { id: DesignType; name: string; icon: any }[] = [
+  { id: 'text_fine', name: '細かい文字・繊細な線', icon: Printer },
+  { id: 'text_bold', name: '太い文字・ベタ塗り', icon: Zap },
+  { id: 'photo', name: '写真・画像', icon: ImageIcon },
+];
+
+// ヘルパー関数: HEX色をRGBオブジェクトに変換
+const hexToRgb = (hex: string) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : { r: 0, g: 0, b: 0 };
+};
+
+function LaserCheckApp() {
+  const [selectedMaterial, setSelectedMaterial] = useState<MaterialType | null>(null);
+  const [selectedDesign, setSelectedDesign] = useState<DesignType | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isFixing, setIsFixing] = useState(false);
+  const [showResult, setShowResult] = useState(false);
+  
+  // 画像解析用ステート
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<ImageAnalysisResult | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // シミュレーション用ステート
+  const [boardWidth, setBoardWidth] = useState<number | string>(100); // mm
+  const [boardHeight, setBoardHeight] = useState<number | string>(100); // mm
+  const [simZoom, setSimZoom] = useState(1.0); // プレビューのズーム率
+  const [burnLevel, setBurnLevel] = useState<number>(0); // 現在の焦げレベル(表示用)
+  
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // 共通解析ロジック
+  const performAnalysis = (img: HTMLImageElement): ImageAnalysisResult => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error("Canvas context error");
+
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    let colorPixelCount = 0;
+    let totalBrightness = 0;
+    let transparentPixelCount = 0;
+    let minBrightness = 255;
+    let maxBrightness = 0;
+
+    // 四隅のチェック
+    const w = canvas.width;
+    const h = canvas.height;
+    const cornerIndices = [0, (w - 1) * 4, (h - 1) * w * 4, (w * h - 1) * 4];
+    
+    let transparentCornerCount = 0;
+    let pureWhiteCornerCount = 0;
+    let nearWhiteCornerCount = 0;
+
+    cornerIndices.forEach(idx => {
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+        const a = data[idx + 3];
+
+        if (a < 10) {
+            transparentCornerCount++;
+        } else {
+            if (r === 255 && g === 255 && b === 255) {
+                pureWhiteCornerCount++;
+                nearWhiteCornerCount++;
+            } else if (r > 240 && g > 240 && b > 240) {
+                nearWhiteCornerCount++;
+            }
+        }
+    });
+
+    const cornersAreTransparent = transparentCornerCount === 4;
+    const cornersArePureWhite = pureWhiteCornerCount === 4;
+    const cornersAreNearWhite = nearWhiteCornerCount === 4;
+
+    const step = 4; 
+    for (let i = 0; i < data.length; i += 4 * step) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const a = data[i + 3];
+
+      if (a < 250) transparentPixelCount++;
+
+      const brightness = (r + g + b) / 3;
+      totalBrightness += brightness;
+      
+      if (brightness < minBrightness) minBrightness = brightness;
+      if (brightness > maxBrightness) maxBrightness = brightness;
+
+      if (Math.abs(r - g) > 10 || Math.abs(g - b) > 10) {
+        colorPixelCount++;
+      }
+    }
+
+    const pixelCount = data.length / 4 / step;
+    const avgBrightness = totalBrightness / pixelCount;
+    const contrastRange = maxBrightness - minBrightness;
+    const transparencyRatio = (transparentPixelCount / pixelCount);
+
+    return {
+      hasColor: (colorPixelCount / pixelCount) > 0.05,
+      isLowContrast: contrastRange < 100,
+      hasTransparency: transparencyRatio > 0.01,
+      cornersAreTransparent,
+      cornersArePureWhite,
+      cornersAreNearWhite,
+      width: img.width,
+      height: img.height,
+      brightness: avgBrightness
+    };
+  };
+
+  // ファイル読み込みハンドラー
+  const analyzeImageFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+        alert('画像ファイル（JPG, PNG等）を選択してください。');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const result = performAnalysis(img);
+        setAnalysisResult(result);
+        
+        if (result.hasColor || (result.width > 0 && !result.isLowContrast && result.hasTransparency)) {
+             setSelectedDesign('photo');
+        } else {
+             setSelectedDesign('text_bold'); 
+        }
+
+        setUploadedImage(e.target?.result as string);
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 共通の画像更新処理
+  const updateImage = (canvas: HTMLCanvasElement) => {
+    const fixedImageSrc = canvas.toDataURL('image/png');
+    setUploadedImage(fixedImageSrc);
+    
+    const newImg = new Image();
+    newImg.onload = () => {
+        const newResult = performAnalysis(newImg);
+        setAnalysisResult(newResult);
+        setIsFixing(false);
+    };
+    newImg.src = fixedImageSrc;
+  };
+
+  // AI自動修正
+  const handleAutoFix = () => {
+    if (!uploadedImage || !analysisResult) return;
+    setIsFixing(true);
+
+    const img = new Image();
+    img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        const needsGrayscale = analysisResult.hasColor;
+        const needsContrast = analysisResult.isLowContrast;
+        const needsWhiteFix = analysisResult.cornersAreNearWhite && !analysisResult.cornersArePureWhite;
+        const contrast = 50; 
+        const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+
+        for (let i = 0; i < data.length; i += 4) {
+            let r = data[i];
+            let g = data[i + 1];
+            let b = data[i + 2];
+            if (needsGrayscale) {
+                const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                r = g = b = gray;
+            }
+            if (needsContrast) {
+                r = factor * (r - 128) + 128;
+                g = factor * (g - 128) + 128;
+                b = factor * (b - 128) + 128;
+                r = Math.max(0, Math.min(255, r));
+                g = Math.max(0, Math.min(255, g));
+                b = Math.max(0, Math.min(255, b));
+            }
+            if (needsWhiteFix) {
+                if (r > 230 && g > 230 && b > 230) {
+                    r = 255; g = 255; b = 255;
+                }
+            }
+            data[i] = r; data[i+1] = g; data[i+2] = b;
+        }
+        ctx.putImageData(imageData, 0, 0);
+        updateImage(canvas);
+    };
+    img.src = uploadedImage;
+  };
+
+  // 背景操作系
+  const handleMakeWhite = () => {
+    if (!uploadedImage) return;
+    setIsFixing(true);
+    const img = new Image();
+    img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        canvas.width = img.width; canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+            if (a < 255 || (r > 210 && g > 210 && b > 210)) {
+                data[i] = 255; data[i+1] = 255; data[i+2] = 255; data[i+3] = 255;
+            }
+        }
+        ctx.putImageData(imageData, 0, 0);
+        updateImage(canvas);
+    };
+    img.src = uploadedImage;
+  };
+
+  const handleMakeTransparent = () => {
+    if (!uploadedImage) return;
+    setIsFixing(true);
+    const img = new Image();
+    img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        canvas.width = img.width; canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i], g = data[i+1], b = data[i+2];
+            if (r > 210 && g > 210 && b > 210) {
+                data[i+3] = 0;
+            }
+        }
+        ctx.putImageData(imageData, 0, 0);
+        updateImage(canvas);
+    };
+    img.src = uploadedImage;
+  };
+
+  const handleDownload = () => {
+    if (!uploadedImage) return;
+    const link = document.createElement('a');
+    link.href = uploadedImage;
+    link.download = 'xtool_processed_image.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // シミュレーション画像のダウンロード
+  const handleDownloadSimulation = () => {
+    if (!canvasRef.current) return;
+    const link = document.createElement('a');
+    link.href = canvasRef.current.toDataURL('image/png');
+    link.download = `simulation_${selectedMaterial || 'result'}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation(); setIsDragging(true);
+  };
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation(); setIsDragging(false);
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation(); setIsDragging(false);
+    if (e.dataTransfer.files?.[0]) analyzeImageFile(e.dataTransfer.files[0]);
+  };
+
+  const handleAnalyze = () => {
+    if (!selectedMaterial || !selectedDesign) return;
+    setIsAnalyzing(true);
+    setShowResult(false);
+    setTimeout(() => {
+      setIsAnalyzing(false);
+      setShowResult(true);
+    }, 800);
+  };
+
+  const reset = () => {
+    setShowResult(false);
+    setSelectedMaterial(null);
+    setSelectedDesign(null);
+    setUploadedImage(null);
+    setAnalysisResult(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // プレビューの「全体を表示」
+  const handleFitScreen = () => {
+      if (!containerRef.current) return;
+      const wNum = Number(boardWidth);
+      const hNum = Number(boardHeight);
+      if (isNaN(wNum) || isNaN(hNum) || wNum <= 0 || hNum <= 0) return;
+
+      const containerW = containerRef.current.clientWidth - 40; // padding分
+      const containerH = 300; // コンテナの最低高さ
+      
+      // 1mm = 5px (基準) -> これに対して倍率を計算
+      const baseW = wNum * 5;
+      const baseH = hNum * 5;
+
+      const scaleW = containerW / baseW;
+      const scaleH = containerH / baseH;
+      
+      const newZoom = Math.min(scaleW, scaleH, 1.2); // 最大でも1.2倍程度に
+      setSimZoom(newZoom);
+  };
+
+  // ホイール操作でズーム
+  const handleWheel = (e: React.WheelEvent) => {
+      e.preventDefault();
+      const delta = -Math.sign(e.deltaY) * 0.1;
+      setSimZoom(z => Math.max(0.1, Math.min(5.0, z + delta)));
+  };
+
+  // ドラッグスクロール (Pan)
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+      if (!containerRef.current) return;
+      setIsPanning(true);
+      setPanStart({
+          x: e.pageX,
+          y: e.pageY,
+          scrollLeft: containerRef.current.scrollLeft,
+          scrollTop: containerRef.current.scrollTop
+      });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+      if (!isPanning || !containerRef.current) return;
+      e.preventDefault();
+      const x = e.pageX - panStart.x;
+      const y = e.pageY - panStart.y;
+      containerRef.current.scrollLeft = panStart.scrollLeft - x;
+      containerRef.current.scrollTop = panStart.scrollTop - y;
+  };
+
+  const handleMouseUp = () => {
+      setIsPanning(false);
+  };
+
+  // --- シミュレーション描画ロジック ---
+  useEffect(() => {
+    if (!showResult || !canvasRef.current || !selectedMaterial) return;
+    
+    let isActive = true;
+
+    let wNum = Number(boardWidth);
+    let hNum = Number(boardHeight);
+
+    if (isNaN(wNum) || wNum <= 0) wNum = 100;
+    if (isNaN(hNum) || hNum <= 0) hNum = 100;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const material = MATERIALS.find(m => m.id === selectedMaterial);
+    if (!material) return;
+
+    // 1mm = 5px (ディスプレイ上の表示基準解像度) × ズーム率
+    const DISPLAY_PIXEL_PER_MM = 5 * simZoom;
+    const canvasW = Math.max(1, Math.floor(wNum * DISPLAY_PIXEL_PER_MM));
+    const canvasH = Math.max(1, Math.floor(hNum * DISPLAY_PIXEL_PER_MM));
+
+    // キャンバスリサイズ
+    canvas.width = canvasW;
+    canvas.height = canvasH;
+
+    // 1. 背景描画
+    ctx.fillStyle = material.color;
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    // テクスチャ生成
+    if (material.textureType === 'wood') {
+      const particleCount = Math.min(5000, canvasW * canvasH * 0.005); 
+      for (let i = 0; i < particleCount; i++) {
+        const x = Math.random() * canvasW;
+        const y = Math.random() * canvasH;
+        const w = Math.random() * 50 + 20;
+        const h = Math.random() * 2 + 0.5;
+        ctx.fillStyle = `rgba(160, 130, 100, ${Math.random() * 0.1})`;
+        ctx.fillRect(x, y, w, h);
+      }
+      ctx.strokeStyle = `rgba(100, 70, 40, 0.05)`;
+      ctx.lineWidth = 2 * simZoom;
+      for (let i = 0; i < 10; i++) {
+         ctx.beginPath();
+         ctx.moveTo(0, Math.random() * canvasH);
+         ctx.bezierCurveTo(canvasW/3, Math.random() * canvasH, canvasW*2/3, Math.random() * canvasH, canvasW, Math.random() * canvasH);
+         ctx.stroke();
+      }
+    } else if (material.textureType === 'noise') {
+        const imageData = ctx.getImageData(0, 0, canvasW, canvasH);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            const noise = (Math.random() - 0.5) * 20;
+            data[i] = Math.max(0, Math.min(255, data[i] + noise));
+            data[i+1] = Math.max(0, Math.min(255, data[i+1] + noise));
+            data[i+2] = Math.max(0, Math.min(255, data[i+2] + noise));
+        }
+        ctx.putImageData(imageData, 0, 0);
+    }
+
+    // 2. 画像描画（物理シミュレーション付き）
+    if (uploadedImage) {
+        const img = new Image();
+        img.onload = () => {
+            if (!isActive) return;
+            if (img.width === 0 || img.height === 0) return;
+
+            // --- 計算準備 ---
+            const fitScale = Math.min((canvasW * 0.8) / img.width, (canvasH * 0.8) / img.height);
+            const drawW = Math.max(1, Math.floor(img.width * fitScale));
+            const drawH = Math.max(1, Math.floor(img.height * fitScale));
+            const x = (canvasW - drawW) / 2;
+            const y = (canvasH - drawH) / 2;
+
+            // --- 物理シミュレーション ---
+            const realImageWidthMm = wNum * (drawW / canvasW);
+            const sourcePixelSizeMm = realImageWidthMm / img.width;
+            
+            // レーザーのスポット径を少し大きめに見積もり(0.12mm)
+            const LASER_SPOT_SIZE_MM = 0.12; 
+            const spotScale = LASER_SPOT_SIZE_MM / sourcePixelSizeMm;
+            setBurnLevel(spotScale);
+
+            // 焦げの広がり半径計算 (spotScaleが0.5を超えると急激に増える)
+            let burnBlurRadius = 0;
+            if (spotScale > 0.5) {
+                // 100mm設定などの高密度時は、この値が大きくなり大きく滲む
+                burnBlurRadius = (spotScale - 0.5) * material.thermalDiffusion;
+            }
+
+            // --- 画像処理: 背景透明化 & 着色 ---
+            // まず元サイズで透明化処理を行う
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = img.width;
+            tempCanvas.height = img.height;
+            const tCtx = tempCanvas.getContext('2d');
+            if(!tCtx) return;
+            tCtx.drawImage(img, 0, 0);
+            
+            const imageData = tCtx.getImageData(0, 0, img.width, img.height);
+            const data = imageData.data;
+            const burnRgb = hexToRgb(material.burnColor);
+
+            for(let i = 0; i < data.length; i += 4) {
+                const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+                const brightness = (r + g + b) / 3;
+                
+                // 白(230以上)は透明にする = 背景を抜く
+                if (brightness > 230) {
+                    data[i+3] = 0;
+                } else {
+                    // 黒い部分ほど不透明度を残し、焦げ色に置換
+                    // 輝度が低い(黒い)ほどalphaを高く保つ
+                    const alphaRatio = a / 255;
+                    data[i] = burnRgb.r;
+                    data[i+1] = burnRgb.g;
+                    data[i+2] = burnRgb.b;
+                    // 元のアルファも考慮しつつ、暗い部分を強調
+                    data[i+3] = Math.min(255, (255 - brightness + 50) * alphaRatio); 
+                }
+            }
+            tCtx.putImageData(imageData, 0, 0);
+
+            // --- リサイズ & 焦げ（滲み）処理 ---
+            const processCanvas = document.createElement('canvas');
+            processCanvas.width = drawW;
+            processCanvas.height = drawH;
+            const pCtx = processCanvas.getContext('2d');
+            if(!pCtx) return;
+
+            // 透明化した画像をリサイズして描画
+            pCtx.drawImage(tempCanvas, 0, 0, drawW, drawH);
+
+            if (burnBlurRadius > 0.2) {
+                const blurCanvas = document.createElement('canvas');
+                blurCanvas.width = drawW;
+                blurCanvas.height = drawH;
+                const bCtx = blurCanvas.getContext('2d');
+                if (bCtx) {
+                    const blurAmount = Math.min(burnBlurRadius, 15);
+                    bCtx.filter = `blur(${blurAmount}px)`;
+                    bCtx.drawImage(processCanvas, 0, 0); // 元の透過画像をぼかす
+                    
+                    // ぼかした画像を重ねる (黒を広げる効果)
+                    pCtx.globalCompositeOperation = 'source-over';
+                    
+                    // 100mm設定など密度が高い場合は、強く重ねて「潰れ」を再現
+                    const intensity = Math.min(1.0, (burnBlurRadius * 0.2)); 
+                    pCtx.globalAlpha = intensity;
+                    pCtx.drawImage(blurCanvas, 0, 0);
+                    
+                    // さらに潰れさせる
+                    if (burnBlurRadius > 3.0) {
+                        pCtx.drawImage(blurCanvas, 0, 0);
+                    }
+                    
+                    pCtx.globalAlpha = 1.0;
+                }
+            }
+
+            // --- メインキャンバスへの合成 ---
+            ctx.globalCompositeOperation = 'multiply'; // 乗算で木目に馴染ませる
+            ctx.drawImage(processCanvas, x, y);
+            
+            ctx.globalCompositeOperation = 'source-over';
+        };
+        img.src = uploadedImage;
+    }
+
+    return () => { isActive = false; };
+  }, [showResult, boardWidth, boardHeight, simZoom, uploadedImage, selectedMaterial]);
+
+
+  const getAdvice = (material: MaterialType, design: DesignType, imgResult: ImageAnalysisResult | null): Advice[] => {
+     // ... (既存のロジックそのまま)
+    const adviceList: Advice[] = [];
+
+    if (imgResult) {
+        if (design !== 'photo') {
+            if (imgResult.cornersAreTransparent) {
+                 adviceList.push({
+                    level: 'success',
+                    title: '✅ 背景透過OK',
+                    message: '画像の四隅が透明です。ロゴや文字の形に沿って綺麗に彫刻できます。'
+                });
+            } else if (imgResult.cornersArePureWhite) {
+                 adviceList.push({
+                    level: 'success',
+                    title: '✅ 背景は「完全な白」です',
+                    message: '背景は透過されていませんが、RGB(255,255,255)の完全な白です。加工ソフトの設定で「白を透過（無視）」扱いにすれば、背景を焼かずに加工可能です。'
+                });
+            } else if (imgResult.cornersAreNearWhite) {
+                 adviceList.push({
+                    level: 'danger',
+                    title: '⚠️ 背景が「完全な白」ではありません',
+                    message: '背景が白に見えますが、データ上はわずかに色（グレーやノイズ）が入っています。このままではソフトが「白」と認識できず、背景の四角い枠ごと彫刻されたり、汚れのように跡が残る可能性があります。「AI自動修正」で白飛びさせることを推奨します。'
+                });
+            } else {
+                adviceList.push({
+                    level: 'warning',
+                    title: '⚠️ 背景があります',
+                    message: '背景が白や透明ではありません。ロゴを切り抜きたい場合は、背景除去を行う必要があります。'
+                });
+            }
+        }
+
+        if (imgResult.hasColor) {
+            adviceList.push({
+                level: 'warning',
+                title: '⚠️ カラー画像が含まれています',
+                message: 'レーザーは色を表現できません。グレースケールに変換し、コントラストを調整する必要があります。'
+            });
+        }
+        if (imgResult.isLowContrast) {
+            adviceList.push({
+                level: 'danger',
+                title: '⚠️ コントラストが低すぎます',
+                message: '明暗の差が少なく、彫刻結果がぼやける可能性があります。'
+            });
+        }
+    } else {
+        adviceList.push({
+            level: 'warning',
+            title: 'カラー印刷不可',
+            message: 'レーザー彫刻はデータ上の色を濃淡として処理します。'
+        });
+    }
+
+    if (!material) return adviceList;
+
+    switch (material) {
+      case 'wood':
+        if (design === 'photo') {
+          adviceList.push({
+            level: 'danger',
+            title: '写真の表現難易度：高',
+            message: '木目が邪魔をして写真が綺麗に見えないことが多いです。コントラストを強くし、木目の少ない明るい木（シナベニヤやバスウッド）を選ぶ必要があります。'
+          });
+        } else if (design === 'text_fine') {
+          adviceList.push({
+            level: 'warning',
+            title: '焦げによる滲み（炭化）',
+            message: '木材は彫刻時に周囲が焦げて茶色くなります（ヤニ）。細かい文字（6pt以下など）は焦げで潰れて読めなくなる可能性があります。'
+          });
+        } else {
+          adviceList.push({
+            level: 'success',
+            title: '相性良好',
+            message: 'ロゴや太い文字は木材と非常に相性が良いです。深く彫ることで立体感が出ます。'
+          });
+        }
+        break;
+
+      case 'leather':
+        adviceList.push({
+          level: 'warning',
+          title: '匂いと収縮',
+          message: '革は加工時に強い焦げ臭が発生します。また、熱で革が縮み、細かいデザインが歪むことがあります。'
+        });
+        if (design === 'photo') {
+          adviceList.push({
+            level: 'danger',
+            title: '写真は不向き',
+            message: '革の表面の凹凸や色ムラにより、写真は非常に不鮮明になります。シルエットデザインに変更することをお勧めします。'
+          });
+        }
+        break;
+
+      case 'aluminum':
+      case 'stainless':
+        if (material === 'aluminum') {
+           adviceList.push({
+            level: 'warning',
+            title: 'メッキ・塗装剥がれに注意',
+            message: 'アルマイト（陽極酸化）処理されたアルミは綺麗に白く発色しますが、安価なメッキ塗装の場合、熱で塗装が汚く剥がれたり、焦げて黒ずむだけで彫刻できない場合があります。'
+          });
+        }
+        if (design === 'photo') {
+            if (imgResult && !imgResult.isLowContrast) {
+                 adviceList.push({
+                    level: 'success',
+                    title: '金属への写真彫刻は有望です',
+                    message: 'F2の赤外線レーザーは金属への写真彫刻が得意です。'
+                  });
+            } else {
+                adviceList.push({
+                    level: 'success',
+                    title: '金属への写真は高コントラストで',
+                    message: 'F2の赤外線レーザーは金属への写真彫刻が可能ですが、元画像の背景を削除し、コントラストを極端に上げたデータを用意してください。'
+                });
+            }
+        }
+        break;
+
+      case 'resin':
+        adviceList.push({
+            level: 'danger',
+            title: '有毒ガスと溶解',
+            message: '塩ビ（PVC）など塩素を含む樹脂は絶対に加工しないでください（機器の腐食・人体への毒性）。また、熱可塑性樹脂は彫刻のエッジが溶けて盛り上がり、細かいデザインが潰れやすいです。'
+        });
+        break;
+    }
+    return adviceList;
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans selection:bg-blue-500 selection:text-white pb-20">
+      <div className="max-w-3xl mx-auto p-4 md:p-8">
+        {/* Header */}
+        <header className="mb-8 text-center border-b border-slate-700 pb-6">
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <Zap className="w-8 h-8 text-blue-400" />
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              Laser Design Advisor
+            </h1>
+          </div>
+          <p className="text-slate-400 text-sm">
+            xTool F2 向け：画像解析＆素材適合性チェッカー
+          </p>
+        </header>
+
+        {/* Main Content */}
+        <main className="space-y-8">
+          
+          {/* Step 1: Material Selection */}
+          <section>
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded">Step 1</span>
+              素材を選択してください
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {MATERIALS.map((mat) => (
+                <button
+                  key={mat.id}
+                  onClick={() => { setSelectedMaterial(mat.id); setShowResult(false); }}
+                  className={`p-4 rounded-xl border text-left transition-all relative overflow-hidden group
+                    ${selectedMaterial === mat.id 
+                      ? 'bg-blue-900/40 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]' 
+                      : 'bg-slate-800 border-slate-700 hover:border-slate-500'}`}
+                >
+                  <div className="font-bold text-slate-200">{mat.name}</div>
+                  <div className="text-xs text-slate-400 mt-1">{mat.laserType}</div>
+                  {selectedMaterial === mat.id && (
+                    <div className="absolute top-2 right-2 text-blue-400">
+                      <CheckCircle size={18} />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Step 2: Image Upload or Manual Selection */}
+          <section className="transition-opacity duration-500 opacity-100">
+            <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
+              <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded">Step 2</span>
+              デザインデータの確認
+            </h2>
+            
+            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 mb-6">
+              <div className="flex flex-col items-center justify-center text-center">
+                <input 
+                    type="file" 
+                    ref={fileInputRef}
+                    accept="image/*" 
+                    onChange={(e) => e.target.files && analyzeImageFile(e.target.files[0])}
+                    className="hidden"
+                    id="image-upload"
+                />
+                <label 
+                    htmlFor="image-upload"
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`
+                        cursor-pointer flex flex-col items-center gap-2 w-full p-8 border-2 border-dashed rounded-lg transition-all duration-200
+                        ${isDragging 
+                            ? 'border-blue-400 bg-blue-900/30 scale-[1.02] shadow-[0_0_20px_rgba(59,130,246,0.3)]' 
+                            : 'border-slate-600 hover:border-blue-500 hover:bg-slate-800'}
+                    `}
+                >
+                    {uploadedImage ? (
+                        <div className="relative pointer-events-none">
+                            <img src={uploadedImage} alt="Uploaded" className="max-h-60 rounded shadow-lg" />
+                            <div className="absolute -bottom-2 -right-2 bg-green-500 text-white p-1 rounded-full">
+                                <CheckCircle size={16} />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="pointer-events-none flex flex-col items-center gap-2">
+                            <Upload className={`w-10 h-10 transition-colors ${isDragging ? 'text-blue-400' : 'text-slate-400'}`} />
+                            <span className={`font-medium transition-colors ${isDragging ? 'text-blue-300' : 'text-slate-300'}`}>
+                                {isDragging ? 'ファイルをドロップ' : 'ここをクリックまたはファイルをドロップ'}
+                            </span>
+                            <span className="text-xs text-slate-500">JPG, PNG (クライアント側で解析します)</span>
+                        </div>
+                    )}
+                </label>
+
+                {analysisResult && (
+                    <div className="mt-4 w-full flex flex-col items-center gap-3">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs w-full">
+                            <div className={`p-2 rounded flex items-center justify-center gap-1
+                                ${analysisResult.cornersAreTransparent 
+                                    ? 'bg-green-900/30 text-green-300' 
+                                    : analysisResult.cornersArePureWhite
+                                        ? 'bg-blue-900/30 text-blue-300'
+                                        : 'bg-yellow-900/30 text-yellow-300'
+                                }`}>
+                                <Layers size={14} />
+                                {analysisResult.cornersAreTransparent 
+                                    ? '透過あり' 
+                                    : analysisResult.cornersArePureWhite
+                                        ? '背景: 完全な白'
+                                        : '背景: 色あり'}
+                            </div>
+                            <div className={`p-2 rounded ${analysisResult.hasColor ? 'bg-yellow-900/30 text-yellow-300' : 'bg-slate-700 text-slate-400'}`}>
+                                {analysisResult.hasColor ? '⚠️ カラー検出' : '✅ モノクロ'}
+                            </div>
+                            <div className={`p-2 rounded ${analysisResult.isLowContrast ? 'bg-red-900/30 text-red-300' : 'bg-green-900/30 text-green-300'}`}>
+                                {analysisResult.isLowContrast ? '⚠️ 低コントラスト' : '✅ コントラストOK'}
+                            </div>
+                            <div className="p-2 rounded bg-slate-700 text-slate-300">
+                                サイズ: {analysisResult.width}x{analysisResult.height}
+                            </div>
+                        </div>
+
+                        {/* 編集ツール群 */}
+                        <div className="w-full mt-2 grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <button
+                                onClick={handleAutoFix}
+                                disabled={isFixing}
+                                className={`
+                                    py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-lg text-sm
+                                    ${(analysisResult.hasColor || analysisResult.isLowContrast || (analysisResult.cornersAreNearWhite && !analysisResult.cornersArePureWhite))
+                                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white'
+                                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                    }
+                                `}
+                            >
+                                <Wand2 size={16} /> AI自動修正
+                            </button>
+
+                            <button
+                                onClick={handleMakeWhite}
+                                disabled={isFixing}
+                                className="py-2 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-all shadow text-sm"
+                            >
+                                <PaintBucket size={16} className="text-blue-300"/> 背景を白に
+                            </button>
+
+                            <button
+                                onClick={handleMakeTransparent}
+                                disabled={isFixing}
+                                className="py-2 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-all shadow text-sm"
+                            >
+                                <Eraser size={16} className="text-red-300"/> 背景を透過
+                            </button>
+                        </div>
+                        
+                        <button
+                            onClick={handleDownload}
+                            className="mt-2 w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-lg text-sm"
+                        >
+                            <Download size={16} /> 編集した画像を保存
+                        </button>
+                        
+                        {isFixing && <span className="text-xs text-blue-400 animate-pulse">処理中...</span>}
+
+                    </div>
+                )}
+              </div>
+            </div>
+
+            <p className="text-slate-400 text-sm mb-4 ml-1">
+               または、手動でタイプを選択してください：
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {DESIGN_TYPES.map((type) => (
+                <button
+                  key={type.id}
+                  onClick={() => { setSelectedDesign(type.id); }}
+                  className={`flex items-center gap-3 p-4 rounded-xl border transition-all
+                    ${selectedDesign === type.id 
+                      ? 'bg-purple-900/40 border-purple-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]' 
+                      : 'bg-slate-800 border-slate-700 hover:bg-slate-750'}`}
+                >
+                  <div className={`p-2 rounded-lg ${selectedDesign === type.id ? 'bg-purple-500/20 text-purple-300' : 'bg-slate-700 text-slate-400'}`}>
+                    <type.icon size={20} />
+                  </div>
+                  <span className="font-medium text-slate-200">{type.name}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Analyze Button */}
+          <div className="flex justify-center pt-4">
+            <button
+              onClick={handleAnalyze}
+              disabled={!selectedMaterial || !selectedDesign || isAnalyzing}
+              className={`
+                px-8 py-3 rounded-full font-bold text-lg flex items-center gap-2 transition-all transform
+                ${(!selectedMaterial || !selectedDesign)
+                  ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:scale-105 text-white shadow-lg'}
+              `}
+            >
+              {isAnalyzing ? (
+                <>
+                  <Settings className="animate-spin" /> 解析中...
+                </>
+              ) : (
+                <>
+                  {!selectedMaterial ? '素材を選択してください' : '総合判定する'} <BarChart />
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Results Area */}
+          {showResult && selectedMaterial && selectedDesign && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+              
+              {/* Advice Report */}
+              <div className="bg-slate-800 border border-slate-600 rounded-2xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+                
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <div className="w-2 h-8 bg-blue-500 rounded-full" />
+                    判定レポート
+                  </h3>
+                  <button onClick={reset} className="text-slate-400 hover:text-white text-sm underline">
+                    やり直す
+                  </button>
+                </div>
+
+                <div className="grid gap-4">
+                  {getAdvice(selectedMaterial, selectedDesign, analysisResult).map((advice, index) => (
+                    <div 
+                      key={index} 
+                      className={`
+                        p-4 rounded-xl border-l-4 flex items-start gap-4
+                        ${advice.level === 'success' ? 'bg-green-900/20 border-green-500' : ''}
+                        ${advice.level === 'warning' ? 'bg-yellow-900/20 border-yellow-500' : ''}
+                        ${advice.level === 'danger' ? 'bg-red-900/20 border-red-500' : ''}
+                      `}
+                    >
+                      <div className="mt-1 shrink-0">
+                        {advice.level === 'success' && <CheckCircle className="text-green-500" />}
+                        {advice.level === 'warning' && <Info className="text-yellow-500" />}
+                        {advice.level === 'danger' && <AlertTriangle className="text-red-500" />}
+                      </div>
+                      <div>
+                        <h4 className={`font-bold mb-1
+                          ${advice.level === 'success' ? 'text-green-400' : ''}
+                          ${advice.level === 'warning' ? 'text-yellow-400' : ''}
+                          ${advice.level === 'danger' ? 'text-red-400' : ''}
+                        `}>
+                          {advice.title}
+                        </h4>
+                        <p className="text-slate-300 text-sm leading-relaxed">
+                          {advice.message}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Simulation Preview */}
+              <div className="bg-slate-800 border border-slate-600 rounded-2xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-orange-400" />
+                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                    <Maximize className="text-orange-400" /> 仕上がりシミュレーター
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Controls */}
+                    <div className="space-y-4">
+                        <div className="p-4 bg-slate-900/50 rounded-lg">
+                            <label className="block text-xs text-slate-400 mb-2 font-bold">素材サイズ (mm)</label>
+                            <div className="flex gap-2">
+                                <div className="flex-1">
+                                    <span className="text-xs text-slate-500 block mb-1">幅</span>
+                                    <input 
+                                        type="number" 
+                                        value={boardWidth} 
+                                        onChange={(e) => setBoardWidth(e.target.value)}
+                                        className="w-full bg-slate-700 border border-slate-600 rounded p-2 text-white text-sm"
+                                        min="1"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <span className="text-xs text-slate-500 block mb-1">高さ</span>
+                                    <input 
+                                        type="number" 
+                                        value={boardHeight} 
+                                        onChange={(e) => setBoardHeight(e.target.value)}
+                                        className="w-full bg-slate-700 border border-slate-600 rounded p-2 text-white text-sm"
+                                        min="1"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-slate-900/50 rounded-lg">
+                            <label className="block text-xs text-slate-400 mb-2 font-bold">プレビュー操作</label>
+                            <div className="flex gap-2 mb-2 flex-wrap">
+                                <button onClick={() => setSimZoom(z => Math.max(0.1, z - 0.1))} className="p-2 bg-slate-700 rounded hover:bg-slate-600" title="縮小">
+                                    <ZoomOut size={16} />
+                                </button>
+                                <span className="p-2 bg-slate-800 rounded min-w-[3.5rem] text-center text-sm font-mono">
+                                    {Math.round(simZoom * 100)}%
+                                </span>
+                                <button onClick={() => setSimZoom(z => Math.min(5.0, z + 0.1))} className="p-2 bg-slate-700 rounded hover:bg-slate-600" title="拡大">
+                                    <ZoomIn size={16} />
+                                </button>
+                                <button onClick={handleFitScreen} className="p-2 bg-slate-700 rounded hover:bg-slate-600 ml-auto flex items-center gap-1 text-xs" title="全体を表示">
+                                    <Scan size={16} /> 全体
+                                </button>
+                                <button onClick={() => setSimZoom(1.0)} className="p-2 bg-slate-700 rounded hover:bg-slate-600" title="100%">
+                                    <RefreshCcw size={16} />
+                                </button>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-2 mb-2">
+                                ・マウスホイール：拡大縮小<br/>
+                                ・ドラッグ：移動<br/>
+                            </p>
+                            
+                            {/* 焦げレベル警告表示 */}
+                            {burnLevel > 2.0 && (
+                                <div className="p-2 bg-red-900/50 border border-red-500/50 rounded text-red-200 text-xs flex items-center gap-2">
+                                    <Flame size={16} className="text-orange-500 shrink-0" />
+                                    <span>
+                                        <b>警告：焦げすぎ注意</b><br/>
+                                        サイズに対して密度が高すぎます。線が潰れる可能性があります。
+                                    </span>
+                                </div>
+                            )}
+
+                            <button 
+                                onClick={handleDownloadSimulation}
+                                className="w-full mt-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs flex items-center justify-center gap-2 transition-colors"
+                            >
+                                <Download size={14} /> シミュレーション画像を保存
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Canvas Area */}
+                    <div 
+                        ref={containerRef}
+                        onWheel={handleWheel}
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                        className={`md:col-span-2 bg-slate-900 rounded-lg p-4 overflow-hidden flex items-center justify-center min-h-[300px] border border-slate-700 relative cursor-${isPanning ? 'grabbing' : 'grab'}`}
+                    >
+                        {/* 中央配置＆スクロール領域 */}
+                        <div 
+                          className="flex items-center justify-center pointer-events-none"
+                          style={{
+                              // 修正: min-w / min-h を指定せず、canvasのサイズに委ねる
+                              // これにより親コンテナのサイズに縛られず、ズーム時にキャンバスが大きくなれる
+                          }}
+                        >
+                            {/* 修正: max-w-none を復活させて、親要素の幅による自動縮小を無効化 */}
+                            <canvas ref={canvasRef} className="shadow-2xl pointer-events-auto max-w-none" />
+                        </div>
+                        
+                        {!uploadedImage && (
+                            <div className="absolute text-slate-500 flex flex-col items-center pointer-events-none">
+                                <ImageIcon size={32} className="mb-2 opacity-50"/>
+                                <span className="text-sm">画像がアップロードされていません</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
+        </main>
+      </div>
+    </div>
+  );
+}
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<LaserCheckApp />);
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<LaserCheckApp />);
+    </script>
+</body>
+</html>

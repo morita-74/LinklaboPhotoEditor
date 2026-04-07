@@ -1,7 +1,142 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { UploadCloud, Image as ImageIcon, Download, Loader2, AlertCircle, Wand2, Layout, Sparkles, BookOpen, Palette, Square, Maximize, Columns, Settings2, Box, Zap, Tag } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App - Linklabo AI Tool</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100">
+    <div id="root"></div>
 
-export default function App() {
+    <script type="text/babel">
+        const { useState, useRef, useEffect, useMemo } = React;
+
+        // --- Lucide Icon Helper ---
+        // Replace Lucide components with a wrapper that uses lucide-static
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const ref = useRef(null);
+            useEffect(() => {
+                if (ref.current) {
+                    const icon = lucide.icons[name];
+                    if (icon) {
+                        const svg = lucide.createIcons({
+                            icons: { [name]: icon },
+                            nameAttr: 'data-lucide',
+                            attrs: { 'stroke-width': 2, width: size, height: size, class: className }
+                        });
+                    }
+                }
+            }, [name, size, className]);
+            return <i ref={ref} data-lucide={name.toLowerCase()} className={className} style={ { width: size, height: size, display: 'inline-block' } }></i>;
+        };
+
+        // Mock Lucide components for the React code
+        const Lucide = {
+            Upload: (props) => <Icon name="Upload" {...props} />,
+            Download: (props) => <Icon name="Download" {...props} />,
+            Wand2: (props) => <Icon name="Wand2" {...props} />,
+            Image: (props) => <Icon name="Image" {...props} />,
+            Sparkles: (props) => <Icon name="Sparkles" {...props} />,
+            RefreshCw: (props) => <Icon name="RefreshCw" {...props} />,
+            X: (props) => <Icon name="X" {...props} />,
+            Palette: (props) => <Icon name="Palette" {...props} />,
+            Zap: (props) => <Icon name="Zap" {...props} />,
+            AlertTriangle: (props) => <Icon name="AlertTriangle" {...props} />,
+            CheckCircle: (props) => <Icon name="CheckCircle" {...props} />,
+            Info: (props) => <Icon name="Info" {...props} />,
+            XCircle: (props) => <Icon name="XCircle" {...props} />,
+            Settings: (props) => <Icon name="Settings" {...props} />,
+            Printer: (props) => <Icon name="Printer" {...props} />,
+            BarChart: (props) => <Icon name="BarChart" {...props} />,
+            Layers: (props) => <Icon name="Layers" {...props} />,
+            PaintBucket: (props) => <Icon name="PaintBucket" {...props} />,
+            Eraser: (props) => <Icon name="Eraser" {...props} />,
+            Maximize: (props) => <Icon name="Maximize" {...props} />,
+            ZoomIn: (props) => <Icon name="ZoomIn" {...props} />,
+            ZoomOut: (props) => <Icon name="ZoomOut" {...props} />,
+            Scan: (props) => <Icon name="Scan" {...props} />,
+            Flame: (props) => <Icon name="Flame" {...props} />,
+            ChevronRight: (props) => <Icon name="ChevronRight" {...props} />,
+            ChevronLeft: (props) => <Icon name="ChevronLeft" {...props} />,
+            Languages: (props) => <Icon name="Languages" {...props} />,
+            Copy: (props) => <Icon name="Copy" {...props} />,
+            Check: (props) => <Icon name="Check" {...props} />,
+            Type: (props) => <Icon name="Type" {...props} />,
+            Volume2: (props) => <Icon name="Volume2" {...props} />,
+            Mic: (props) => <Icon name="Mic" {...props} />,
+            Send: (props) => <Icon name="Send" {...props} />,
+            Trash2: (props) => <Icon name="Trash2" {...props} />,
+            Plus: (props) => <Icon name="Plus" {...props} />,
+            Minus: (props) => <Icon name="Minus" {...props} />,
+            HelpCircle: (props) => <Icon name="HelpCircle" {...props} />,
+            ShieldCheck: (props) => <Icon name="ShieldCheck" {...props} />,
+            Lock: (props) => <Icon name="Lock" {...props} />,
+            Eye: (props) => <Icon name="Eye" {...props} />,
+            History: (props) => <Icon name="History" {...props} />,
+            Share2: (props) => <Icon name="Share2" {...props} />,
+            ShoppingCart: (props) => <Icon name="ShoppingCart" {...props} />,
+            Heart: (props) => <Icon name="Heart" {...props} />,
+            Star: (props) => <Icon name="Star" {...props} />,
+            User: (props) => <Icon name="User" {...props} />,
+            Mail: (props) => <Icon name="Mail" {...props} />,
+            Phone: (props) => <Icon name="Phone" {...props} />,
+            MapPin: (props) => <Icon name="MapPin" {...props} />,
+            Calendar: (props) => <Icon name="Calendar" {...props} />,
+            Clock: (props) => <Icon name="Clock" {...props} />,
+            Tag: (props) => <Icon name="Tag" {...props} />,
+            Search: (props) => <Icon name="Search" {...props} />,
+            Filter: (props) => <Icon name="Filter" {...props} />,
+            SortAsc: (props) => <Icon name="SortAsc" {...props} />,
+            SortDesc: (props) => <Icon name="SortDesc" {...props} />,
+            MoreHorizontal: (props) => <Icon name="MoreHorizontal" {...props} />,
+            MoreVertical: (props) => <Icon name="MoreVertical" {...props} />,
+            Grid: (props) => <Icon name="Grid" {...props} />,
+            List: (props) => <Icon name="List" {...props} />,
+            ExternalLink: (props) => <Icon name="ExternalLink" {...props} />,
+            Ghost: (props) => <Icon name="Ghost" {...props} />,
+            Scissors: (props) => <Icon name="Scissors" {...props} />,
+            Briefcase: (props) => <Icon name="Briefcase" {...props} />,
+            Coins: (props) => <Icon name="Coins" {...props} />,
+            MessageSquare: (props) => <Icon name="MessageSquare" {...props} />,
+            Edit3: (props) => <Icon name="Edit3" {...props} />,
+            FileText: (props) => <Icon name="FileText" {...props} />,
+            EyeOff: (props) => <Icon name="EyeOff" {...props} />,
+            Moon: (props) => <Icon name="Moon" {...props} />,
+            Sun: (props) => <Icon name="Sun" {...props} />,
+            Menu: (props) => <Icon name="Menu" {...props} />,
+            Smartphone: (props) => <Icon name="Smartphone" {...props} />,
+            Instagram: (props) => <Icon name="Instagram" {...props} />,
+            Facebook: (props) => <Icon name="Facebook" {...props} />,
+            Twitter: (props) => <Icon name="Twitter" {...props} />,
+            Chrome: (props) => <Icon name="Chrome" {...props} />,
+            CreditCard: (props) => <Icon name="CreditCard" {...props} />,
+            PlusCircle: (props) => <Icon name="PlusCircle" {...props} />,
+            MinusCircle: (props) => <Icon name="MinusCircle" {...props} />,
+            Layout: (props) => <Icon name="Layout" {...props} />,
+            Box: (props) => <Icon name="Box" {...props} />,
+            Brush: (props) => <Icon name="Brush" {...props} />,
+            Gem: (props) => <Icon name="Gem" {...props} />,
+            Coffee: (props) => <Icon name="Coffee" {...props} />,
+            Code: (props) => <Icon name="Code" {...props} />,
+            Music: (props) => <Icon name="Music" {...props} />,
+            Video: (props) => <Icon name="Video" {...props} />,
+            Play: (props) => <Icon name="Play" {...props} />,
+            Pause: (props) => <Icon name="Pause" {...props} />,
+            Link: (props) => <Icon name="Link" {...props} />,
+        };
+
+        // Replace direct Lucide imports in the original code
+        // 
+function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [bgImage, setBgImage] = useState(null);
@@ -427,3 +562,531 @@ export default function App() {
     </div>
   );
 }
+
+        const Upload = Lucide.Upload;
+        const Download = Lucide.Download;
+        const Wand2 = Lucide.Wand2;
+        const Image = Lucide.Image;
+        const Sparkles = Lucide.Sparkles;
+        const RefreshCw = Lucide.RefreshCw;
+        const X = Lucide.X;
+        const Palette = Lucide.Palette;
+        const Zap = Lucide.Zap;
+        const AlertTriangle = Lucide.AlertTriangle;
+        const CheckCircle = Lucide.CheckCircle;
+        const Info = Lucide.Info;
+        const XCircle = Lucide.XCircle;
+        const Settings = Lucide.Settings;
+        const Printer = Lucide.Printer;
+        const BarChart = Lucide.BarChart;
+        const Layers = Lucide.Layers;
+        const PaintBucket = Lucide.PaintBucket;
+        const Eraser = Lucide.Eraser;
+        const Maximize = Lucide.Maximize;
+        const ZoomIn = Lucide.ZoomIn;
+        const ZoomOut = Lucide.ZoomOut;
+        const Scan = Lucide.Scan;
+        const Flame = Lucide.Flame;
+        const ChevronRight = Lucide.ChevronRight;
+        const ChevronLeft = Lucide.ChevronLeft;
+        const Languages = Lucide.Languages;
+        const Copy = Lucide.Copy;
+        const Check = Lucide.Check;
+        const Type = Lucide.Type;
+        const Volume2 = Lucide.Volume2;
+        const Mic = Lucide.Mic;
+        const Send = Lucide.Send;
+        const Trash2 = Lucide.Trash2;
+        const Plus = Lucide.Plus;
+        const Minus = Lucide.Minus;
+        const HelpCircle = Lucide.HelpCircle;
+        const ShieldCheck = Lucide.ShieldCheck;
+        const Lock = Lucide.Lock;
+        const Eye = Lucide.Eye;
+        const History = Lucide.History;
+        const Share2 = Lucide.Share2;
+        const ShoppingCart = Lucide.ShoppingCart;
+        const Heart = Lucide.Heart;
+        const Star = Lucide.Star;
+        const User = Lucide.User;
+        const Mail = Lucide.Mail;
+        const Phone = Lucide.Phone;
+        const MapPin = Lucide.MapPin;
+        const Calendar = Lucide.Calendar;
+        const Clock = Lucide.Clock;
+        const Tag = Lucide.Tag;
+        const Search = Lucide.Search;
+        const Filter = Lucide.Filter;
+        const SortAsc = Lucide.SortAsc;
+        const SortDesc = Lucide.SortDesc;
+        const MoreHorizontal = Lucide.MoreHorizontal;
+        const MoreVertical = Lucide.MoreVertical;
+        const Grid = Lucide.Grid;
+        const List = Lucide.List;
+        const ExternalLink = Lucide.ExternalLink;
+        const Ghost = Lucide.Ghost;
+        const Scissors = Lucide.Scissors;
+        const Briefcase = Lucide.Briefcase;
+        const Coins = Lucide.Coins;
+        const MessageSquare = Lucide.MessageSquare;
+        const Edit3 = Lucide.Edit3;
+        const FileText = Lucide.FileText;
+        const EyeOff = Lucide.EyeOff;
+        const Moon = Lucide.Moon;
+        const Sun = Lucide.Sun;
+        const Menu = Lucide.Menu;
+        const Smartphone = Lucide.Smartphone;
+        const Instagram = Lucide.Instagram;
+        const Facebook = Lucide.Facebook;
+        const Twitter = Lucide.Twitter;
+        const Chrome = Lucide.Chrome;
+        const CreditCard = Lucide.CreditCard;
+        const PlusCircle = Lucide.PlusCircle;
+        const MinusCircle = Lucide.MinusCircle;
+        const Layout = Lucide.Layout;
+        const Box = Lucide.Box;
+        const Brush = Lucide.Brush;
+        const Gem = Lucide.Gem;
+        const Coffee = Lucide.Coffee;
+        const Code = Lucide.Code;
+        const Music = Lucide.Music;
+        const Video = Lucide.Video;
+        const Play = Lucide.Play;
+        const Pause = Lucide.Pause;
+        const Link = Lucide.Link;
+
+        
+function App() {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [bgImage, setBgImage] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingCopy, setIsGeneratingCopy] = useState(false);
+  const [generatedImage, setGeneratedImage] = useState(null);
+  const [error, setError] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  
+  const [customText, setCustomText] = useState('ぬくもりのある、\n一点もの');
+  const [categoryText, setCategoryText] = useState('商品群');
+  const [suggestedCopies, setSuggestedCopies] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState('neon');
+  const [textColor, setTextColor] = useState('#06B6D4');
+  const [textOffsetX, setTextOffsetX] = useState(0);
+  const [textOffsetY, setTextOffsetY] = useState(0);
+
+  const fileInputRef = useRef(null);
+  const previewCanvasRef = useRef(null);
+  const apiKey = ""; 
+
+  // レイアウト定数 (1080x1920基準)
+  const CANVAS_W = 1080;
+  const CANVAS_H = 1920;
+  const PADDING = 180; 
+
+  const handleTemplateChange = (templateId) => {
+    setSelectedTemplate(templateId);
+    setTextOffsetX(0);
+    setTextOffsetY(0);
+    switch (templateId) {
+      case 'pop':
+      case 'minimal':
+        setTextColor('#333333');
+        break;
+      case 'split':
+        setTextColor('#312E81');
+        break;
+      case 'photo':
+      case 'glass':
+      case 'band':
+        setTextColor('#FFFDF0');
+        break;
+      case 'neon':
+        setTextColor('#06B6D4');
+        break;
+      default:
+        setTextColor('#FFFFFF');
+    }
+  };
+
+  const handleFileSelect = (file) => {
+    if (file && file.type.startsWith('image/')) {
+      setSelectedFile(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      setGeneratedImage(null);
+      setSuggestedCopies([]);
+      setError('');
+    }
+  };
+
+  // 画像URLが変更されたらImageオブジェクトを生成
+  useEffect(() => {
+    if (generatedImage) {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => setBgImage(img);
+      img.src = generatedImage;
+    } else if (previewUrl) {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => setBgImage(img);
+      img.src = previewUrl;
+    } else {
+      setBgImage(null);
+    }
+  }, [generatedImage, previewUrl]);
+
+  const onDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
+  const onDragLeave = (e) => { e.preventDefault(); setIsDragging(false); };
+  const onDrop = (e) => {
+    e.preventDefault(); setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]);
+  };
+
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve({ base64: reader.result.split(',')[1], mimeType: file.type });
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const generateWithRetry = async (url, body, retries = 5) => {
+    const delays = [1000, 2000, 4000, 8000, 16000];
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(`${url}?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+        return await response.json();
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        await new Promise(resolve => setTimeout(resolve, delays[i]));
+      }
+    }
+  };
+
+  const handleGenerateCopy = async () => {
+    if (!selectedFile) return;
+    setIsGeneratingCopy(true); setError('');
+    try {
+      const imageData = await fileToBase64(selectedFile);
+      const prompt = "Instagramのカバー画像用キャッチコピーを3つと、商品カテゴリを1つ提案してください。JSON形式 { \"copies\": [\"copy1\", \"copy2\", \"copy3\"], \"category\": \"cat\" } で返してください。";
+      const body = {
+        contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: imageData.mimeType, data: imageData.base64 } }] }],
+        generationConfig: { responseMimeType: "application/json" }
+      };
+      const result = await generateWithRetry('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent', body);
+      const data = JSON.parse(result.candidates?.[0]?.content?.parts?.[0]?.text || "{}");
+      if (data.copies && Array.isArray(data.copies)) setSuggestedCopies(data.copies);
+      if (data.category) setCategoryText(String(data.category));
+    } catch (err) {
+      setError('提案の生成に失敗しました。');
+    } finally {
+      setIsGeneratingCopy(false);
+    }
+  };
+
+  const handleGenerateImage = async () => {
+    if (!selectedFile) return;
+    setIsGenerating(true); setError('');
+    try {
+      const imageData = await fileToBase64(selectedFile);
+      const prompt = `Instagramリールカバー(9:16)用。被写体を中央に配置し、背景の雰囲気を保ったまま文字なしの画像を生成してください。`;
+      const body = {
+        contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: imageData.mimeType, data: imageData.base64 } }] }],
+        generationConfig: { responseModalities: ["IMAGE"] }
+      };
+      const result = await generateWithRetry('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent', body);
+      const base64Image = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+      if (!base64Image) throw new Error('生成失敗');
+      setGeneratedImage(`data:image/jpeg;base64,${base64Image}`);
+    } catch (err) {
+      setError('画像生成エラー');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const drawImageProp = (ctx, img, x, y, w, h) => {
+    let iw = img.width, ih = img.height, r = Math.min(w / iw, h / ih), nw = iw * r, nh = ih * r, cx, cy, cw, ch, ar = 1;
+    if (nw < w) ar = w / nw; if (Math.abs(ar - 1) < 1e-14 && nh < h) ar = h / nh;
+    nw *= ar; nh *= ar; cw = iw / (nw / w); ch = ih / (nh / h);
+    cx = (iw - cw) * 0.5; cy = (ih - ch) * 0.5;
+    ctx.drawImage(img, cx, cy, cw, ch, x, y, w, h);
+  };
+
+  const fillRoundRect = (ctx, x, y, w, h, r) => {
+    if (ctx.roundRect) {
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); ctx.fill();
+    }
+  };
+
+  const strokeRoundRect = (ctx, x, y, w, h, r) => {
+    if (ctx.roundRect) {
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); ctx.stroke();
+    }
+  };
+
+  // Canvas描画ロジック (プレビュー・ダウンロード共通)
+  useEffect(() => {
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+    ctx.fillStyle = '#16181d'; 
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    if (!bgImage) return;
+
+    const img = bgImage;
+    const lines = customText.split('\n');
+    const offX = CANVAS_W * (textOffsetX / 100);
+    const offY = CANVAS_H * (textOffsetY / 100);
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
+
+    // テンプレート描画
+    if (selectedTemplate === 'photo') {
+      drawImageProp(ctx, img, 0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.font = 'bold 150px "Zen Maru Gothic", sans-serif';
+      ctx.fillStyle = textColor; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 20;
+      const startY = CANVAS_H / 2 + offY - ((lines.length - 1) * 90);
+      lines.forEach((line, i) => ctx.fillText(line, CANVAS_W / 2 + offX, startY + i * 180));
+    } else if (selectedTemplate === 'magazine') {
+      drawImageProp(ctx, img, 0, 0, CANVAS_W, CANVAS_H);
+      const grad = ctx.createLinearGradient(0, 0, 0, 600); grad.addColorStop(0, 'rgba(0,0,0,0.6)'); grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad; ctx.fillRect(0, 0, CANVAS_W, 600);
+      ctx.font = 'bold 130px serif'; ctx.fillStyle = textColor;
+      const startY = CANVAS_H / 2 + offY - ((lines.length - 1) * 80);
+      lines.forEach((line, i) => ctx.fillText(line, CANVAS_W / 2 + offX, startY + i * 160));
+    } else if (selectedTemplate === 'pop') {
+      ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = '#FDE04766'; ctx.beginPath(); ctx.arc(100, 100, 400, 0, Math.PI*2); ctx.fill();
+      ctx.font = '900 160px sans-serif';
+      lines.forEach((line, i) => {
+        const ty = 450 + i * 190 + offY; const tx = CANVAS_W / 2 + offX;
+        ctx.fillStyle = '#FDE047'; ctx.fillText(line, tx + 12, ty + 12);
+        ctx.fillStyle = textColor; ctx.fillText(line, tx, ty);
+      });
+      ctx.save(); ctx.beginPath(); ctx.arc(CANVAS_W/2, CANVAS_H - 500, 450, 0, Math.PI*2); ctx.clip();
+      drawImageProp(ctx, img, 0, CANVAS_H - 950, CANVAS_W, 950); ctx.restore();
+    } else if (selectedTemplate === 'minimal') {
+      ctx.fillStyle = '#FAFAFA'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      drawImageProp(ctx, img, 90, 300, 900, 900);
+      ctx.font = '300 80px sans-serif'; ctx.textBaseline = 'top'; ctx.fillStyle = textColor;
+      lines.forEach((line, i) => ctx.fillText(line, CANVAS_W / 2 + offX, 1350 + i * 110 + offY));
+      ctx.textBaseline = 'middle';
+    } else if (selectedTemplate === 'frame') {
+      drawImageProp(ctx, img, 0, 0, CANVAS_W, CANVAS_H);
+      ctx.strokeStyle = '#FFFFFFE6'; ctx.lineWidth = 16; ctx.strokeRect(PADDING, PADDING, CANVAS_W - PADDING*2, CANVAS_H - PADDING*2);
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; const boxH = lines.length * 150 + 100;
+      ctx.fillRect(CANVAS_W*0.1 + offX, (CANVAS_H - boxH)/2 + offY, CANVAS_W*0.8, boxH);
+      ctx.font = '500 110px serif'; ctx.fillStyle = textColor;
+      lines.forEach((line, i) => ctx.fillText(line, CANVAS_W/2 + offX, (CANVAS_H - boxH)/2 + 100 + i*150 + offY));
+    } else if (selectedTemplate === 'split') {
+      ctx.fillStyle = '#E0E7FF'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H/2);
+      drawImageProp(ctx, img, 0, CANVAS_H/2, CANVAS_W, CANVAS_H/2);
+      ctx.font = '800 150px sans-serif'; ctx.fillStyle = textColor;
+      lines.forEach((line, i) => ctx.fillText(line, CANVAS_W/2 + offX, CANVAS_H/4 + i*180 + offY));
+    } else if (selectedTemplate === 'glass') {
+      drawImageProp(ctx, img, 0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = 'rgba(255,255,255,0.15)'; fillRoundRect(ctx, CANVAS_W*0.05+offX, CANVAS_H*0.35+offY, CANVAS_W*0.9, CANVAS_H*0.3, 20);
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 4; strokeRoundRect(ctx, CANVAS_W*0.05+offX, CANVAS_H*0.35+offY, CANVAS_W*0.9, CANVAS_H*0.3, 20);
+      ctx.font = '300 130px sans-serif'; ctx.fillStyle = textColor;
+      lines.forEach((line, i) => ctx.fillText(line, CANVAS_W/2 + offX, CANVAS_H/2 + i*160 + offY));
+    } else if (selectedTemplate === 'neon') {
+      drawImageProp(ctx, img, 0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.font = '900 150px sans-serif'; ctx.fillStyle = '#FFF'; ctx.shadowColor = textColor; ctx.shadowBlur = 35;
+      lines.forEach((line, i) => { 
+        ctx.fillText(line, CANVAS_W/2 + offX, CANVAS_H/2 + i*190 + offY); 
+        ctx.fillText(line, CANVAS_W/2 + offX, CANVAS_H/2 + i*190 + offY); 
+      });
+      ctx.shadowBlur = 0;
+    } else if (selectedTemplate === 'band') {
+      drawImageProp(ctx, img, 0, 0, CANVAS_W, CANVAS_H);
+      ctx.save(); ctx.translate(CANVAS_W/2 + offX, CANVAS_H/2 + offY); ctx.rotate(-10 * Math.PI/180);
+      ctx.fillStyle = '#E11D48'; ctx.fillRect(-CANVAS_W, -200, CANVAS_W*2, 400); ctx.restore();
+      ctx.font = '800 140px sans-serif'; ctx.fillStyle = textColor;
+      lines.forEach((line, i) => ctx.fillText(line, CANVAS_W/2 + offX, CANVAS_H/2 + i*170 + offY));
+    }
+
+    // 周辺要素の描画 (位置を固定して重ならないようにする)
+    ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+    
+    // 商品群 (右上)
+    if (categoryText) {
+      ctx.font = 'bold 45px sans-serif'; 
+      const tw = ctx.measureText(String(categoryText)).width;
+      const boxW = tw + 80;
+      const boxH = 80;
+      const boxX = CANVAS_W - boxW - 120;
+      const boxY = 120;
+      ctx.fillStyle = 'rgba(0,0,0,0.75)'; 
+      fillRoundRect(ctx, boxX, boxY, boxW, boxH, 40); 
+      ctx.fillStyle = '#FFF'; 
+      ctx.textAlign = 'center'; 
+      ctx.textBaseline = 'middle'; 
+      ctx.fillText(String(categoryText), boxX + boxW/2, boxY + boxH/2);
+    }
+
+    // レーザー彫刻 (左上)
+    ctx.font = 'bold 45px sans-serif'; 
+    ctx.fillStyle = textColor; 
+    ctx.textAlign = 'left'; 
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 2;
+    ctx.fillText('レーザー彫刻', 120, 160);
+    ctx.shadowColor = 'transparent'; 
+
+    // linklabo2026 (右下)
+    const cpText = 'linklabo2026'; 
+    ctx.font = 'bold 35px sans-serif'; 
+    const cw = ctx.measureText(cpText).width + 60;
+    const ch = 70;
+    const cx = CANVAS_W - cw - 120;
+    const cy = CANVAS_H - ch - 120;
+    ctx.fillStyle = 'rgba(0,0,0,0.75)'; 
+    fillRoundRect(ctx, cx, cy, cw, ch, 35); 
+    ctx.fillStyle = '#FFF'; 
+    ctx.textAlign = 'center'; 
+    ctx.textBaseline = 'middle';
+    ctx.fillText(cpText, cx + cw/2, cy + ch/2 + 2);
+
+  }, [bgImage, customText, categoryText, selectedTemplate, textColor, textOffsetX, textOffsetY]);
+
+  const handleDownload = () => {
+    const canvas = previewCanvasRef.current;
+    if (!canvas || !bgImage) return;
+    const link = document.createElement('a');
+    link.download = 'instagram_cover.jpg';
+    link.href = canvas.toDataURL('image/jpeg', 0.95);
+    link.click();
+  };
+
+  const templatesList = [
+    { id: 'photo', label: 'フォト', icon: <ImageIcon size={20} /> },
+    { id: 'magazine', label: 'マガジン', icon: <BookOpen size={20} /> },
+    { id: 'pop', label: 'ポップ', icon: <Sparkles size={20} /> },
+    { id: 'minimal', label: 'ミニマル', icon: <Square size={20} /> },
+    { id: 'frame', label: 'フレーム', icon: <Maximize size={20} /> },
+    { id: 'split', label: 'スプリット', icon: <Columns size={20} /> },
+    { id: 'glass', label: 'ガラス', icon: <Box size={20} /> },
+    { id: 'neon', label: 'ネオン', icon: <Zap size={20} /> },
+    { id: 'band', label: 'バンド', icon: <Tag size={20} /> }
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#0f1115] text-gray-100 font-sans flex flex-col md:flex-row overflow-hidden">
+      {/* プレビューエリア */}
+      <div className="flex-1 relative flex items-center justify-center p-4 sm:p-6 bg-[#16181d] border-b md:border-b-0 md:border-r border-gray-800/50 min-h-[60vh] md:min-h-screen overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+        {!bgImage ? (
+          <div className="relative z-10 w-full max-w-[300px] aspect-[9/16] rounded-3xl border-2 border-dashed flex flex-col items-center justify-center p-8 border-gray-700 hover:border-indigo-500 transition-all cursor-pointer" onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop} onClick={() => fileInputRef.current?.click()}>
+            <input type="file" ref={fileInputRef} onChange={(e) => handleFileSelect(e.target.files?.[0])} accept="image/*" className="hidden" />
+            <UploadCloud size={30} className="text-indigo-400 mb-4" />
+            <h3 className="text-lg font-bold">画像をアップロード</h3>
+          </div>
+        ) : (
+          <div className="relative z-10 w-full max-w-[340px] aspect-[9/16] rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 group bg-black" onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
+             {/* Canvasによる完全プレビュー */}
+             <canvas ref={previewCanvasRef} width={CANVAS_W} height={CANVAS_H} className="w-full h-full object-cover pointer-events-none" />
+
+             <button onClick={() => fileInputRef.current?.click()} className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity z-50 p-2 bg-black/60 backdrop-blur-md text-white rounded-full hover:bg-black/80 shadow-lg">
+               <UploadCloud size={16} />
+             </button>
+             <input type="file" ref={fileInputRef} onChange={(e) => handleFileSelect(e.target.files?.[0])} accept="image/*" className="hidden" />
+
+             {!generatedImage && (
+               <div className="absolute top-20 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                  <button onClick={handleGenerateImage} disabled={isGenerating} className="flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-md text-white rounded-full text-xs font-medium border border-white/10 hover:bg-black/80 shadow-lg">
+                    {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} className="text-indigo-400" />} AI背景整理
+                  </button>
+               </div>
+            )}
+            {isDragging && <div className="absolute inset-0 z-[100] bg-indigo-500/20 backdrop-blur-sm border-4 border-indigo-500 border-dashed"/>}
+          </div>
+        )}
+      </div>
+
+      {/* ツールパネル */}
+      <div className="w-full md:w-[380px] bg-[#0f1115] flex flex-col h-[40vh] md:h-screen overflow-y-auto scrollbar-hide border-t md:border-t-0 border-gray-800">
+        <div className="p-6 md:p-8 space-y-8">
+          <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400 inline-flex items-center gap-2"><Layout size={20} className="text-indigo-400" /> Cover Studio</h1>
+
+          <div className="space-y-4">
+            <label className="text-xs font-medium text-gray-400 flex items-center gap-2"><Palette size={14} /> テンプレート</label>
+            <div className="grid grid-cols-3 gap-2">
+              {templatesList.map(tpl => (
+                <button key={tpl.id} onClick={() => handleTemplateChange(tpl.id)} className={`p-2.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${selectedTemplate === tpl.id ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}>
+                  {tpl.icon} <span className="text-[10px]">{tpl.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-gray-400">テキスト入力</label>
+              <button onClick={handleGenerateCopy} disabled={!selectedFile || isGeneratingCopy} className="text-[10px] text-indigo-400 flex items-center gap-1 hover:text-indigo-300"><Wand2 size={10} /> AI提案</button>
+            </div>
+            <div className="flex gap-2">
+              <input type="text" value={categoryText} onChange={(e) => setCategoryText(e.target.value)} placeholder="商品群" className="w-1/3 px-3 py-2 bg-[#1a1d24] border border-gray-700 rounded-lg text-white text-xs outline-none focus:border-indigo-500" />
+              <textarea value={customText} onChange={(e) => setCustomText(e.target.value)} rows={2} className="w-2/3 px-3 py-2 bg-[#1a1d24] border border-gray-700 rounded-lg text-white text-xs outline-none focus:border-indigo-500 resize-none" />
+            </div>
+            {suggestedCopies.length > 0 && suggestedCopies.map((copy, i) => (
+              <button key={i} onClick={() => setCustomText(copy)} className="w-full text-left text-[11px] px-3 py-2 bg-[#1a1d24] rounded-lg border border-gray-700 hover:border-indigo-500 text-gray-300 transition-colors mb-1">{copy}</button>
+            ))}
+          </div>
+
+          <div className="space-y-4 pt-4 border-t border-gray-800">
+            <label className="text-xs font-medium text-gray-400 flex items-center gap-2"><Settings2 size={14} /> 装飾・配置</label>
+            <div className="flex flex-wrap gap-1.5">
+              {['#FFFFFF', '#333333', '#FDE047', '#E11D48', '#06B6D4', '#A855F7', '#22C55E'].map(color => (
+                <button key={color} onClick={() => setTextColor(color)} className={`w-5 h-5 rounded-full border transition-transform ${textColor === color ? 'border-indigo-400 scale-110' : 'border-gray-600 hover:scale-110'}`} style={{ backgroundColor: color }} />
+              ))}
+              <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} className="w-5 h-5 bg-transparent border-none cursor-pointer p-0" />
+            </div>
+            <div className="space-y-4 bg-[#1a1d24] p-4 rounded-xl border border-gray-800">
+              <div className="space-y-2">
+                <div className="flex justify-between text-[10px] text-gray-500"><span>左右位置 (X)</span><span>{textOffsetX}%</span></div>
+                <input type="range" min="-100" max="100" value={textOffsetX} onChange={(e) => setTextOffsetX(Number(e.target.value))} className="w-full accent-indigo-500 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-[10px] text-gray-500"><span>上下位置 (Y)</span><span>{textOffsetY}%</span></div>
+                <input type="range" min="-100" max="100" value={textOffsetY} onChange={(e) => setTextOffsetY(Number(e.target.value))} className="w-full accent-indigo-500 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+              </div>
+            </div>
+          </div>
+
+          <button onClick={handleDownload} disabled={!bgImage} className="w-full flex justify-center gap-2 py-4 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 disabled:opacity-30 transition-all shadow-lg mt-auto"><Download size={18} /> カバーを書き出す</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

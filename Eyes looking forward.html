@@ -1,7 +1,142 @@
-import React, { useState, useRef } from 'react';
-import { Loader2, Image as ImageIcon, Download, Upload, X, Eye, Sparkles } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App - Linklabo AI Tool</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100">
+    <div id="root"></div>
 
-export default function App() {
+    <script type="text/babel">
+        const { useState, useRef, useEffect, useMemo } = React;
+
+        // --- Lucide Icon Helper ---
+        // Replace Lucide components with a wrapper that uses lucide-static
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const ref = useRef(null);
+            useEffect(() => {
+                if (ref.current) {
+                    const icon = lucide.icons[name];
+                    if (icon) {
+                        const svg = lucide.createIcons({
+                            icons: { [name]: icon },
+                            nameAttr: 'data-lucide',
+                            attrs: { 'stroke-width': 2, width: size, height: size, class: className }
+                        });
+                    }
+                }
+            }, [name, size, className]);
+            return <i ref={ref} data-lucide={name.toLowerCase()} className={className} style={ { width: size, height: size, display: 'inline-block' } }></i>;
+        };
+
+        // Mock Lucide components for the React code
+        const Lucide = {
+            Upload: (props) => <Icon name="Upload" {...props} />,
+            Download: (props) => <Icon name="Download" {...props} />,
+            Wand2: (props) => <Icon name="Wand2" {...props} />,
+            Image: (props) => <Icon name="Image" {...props} />,
+            Sparkles: (props) => <Icon name="Sparkles" {...props} />,
+            RefreshCw: (props) => <Icon name="RefreshCw" {...props} />,
+            X: (props) => <Icon name="X" {...props} />,
+            Palette: (props) => <Icon name="Palette" {...props} />,
+            Zap: (props) => <Icon name="Zap" {...props} />,
+            AlertTriangle: (props) => <Icon name="AlertTriangle" {...props} />,
+            CheckCircle: (props) => <Icon name="CheckCircle" {...props} />,
+            Info: (props) => <Icon name="Info" {...props} />,
+            XCircle: (props) => <Icon name="XCircle" {...props} />,
+            Settings: (props) => <Icon name="Settings" {...props} />,
+            Printer: (props) => <Icon name="Printer" {...props} />,
+            BarChart: (props) => <Icon name="BarChart" {...props} />,
+            Layers: (props) => <Icon name="Layers" {...props} />,
+            PaintBucket: (props) => <Icon name="PaintBucket" {...props} />,
+            Eraser: (props) => <Icon name="Eraser" {...props} />,
+            Maximize: (props) => <Icon name="Maximize" {...props} />,
+            ZoomIn: (props) => <Icon name="ZoomIn" {...props} />,
+            ZoomOut: (props) => <Icon name="ZoomOut" {...props} />,
+            Scan: (props) => <Icon name="Scan" {...props} />,
+            Flame: (props) => <Icon name="Flame" {...props} />,
+            ChevronRight: (props) => <Icon name="ChevronRight" {...props} />,
+            ChevronLeft: (props) => <Icon name="ChevronLeft" {...props} />,
+            Languages: (props) => <Icon name="Languages" {...props} />,
+            Copy: (props) => <Icon name="Copy" {...props} />,
+            Check: (props) => <Icon name="Check" {...props} />,
+            Type: (props) => <Icon name="Type" {...props} />,
+            Volume2: (props) => <Icon name="Volume2" {...props} />,
+            Mic: (props) => <Icon name="Mic" {...props} />,
+            Send: (props) => <Icon name="Send" {...props} />,
+            Trash2: (props) => <Icon name="Trash2" {...props} />,
+            Plus: (props) => <Icon name="Plus" {...props} />,
+            Minus: (props) => <Icon name="Minus" {...props} />,
+            HelpCircle: (props) => <Icon name="HelpCircle" {...props} />,
+            ShieldCheck: (props) => <Icon name="ShieldCheck" {...props} />,
+            Lock: (props) => <Icon name="Lock" {...props} />,
+            Eye: (props) => <Icon name="Eye" {...props} />,
+            History: (props) => <Icon name="History" {...props} />,
+            Share2: (props) => <Icon name="Share2" {...props} />,
+            ShoppingCart: (props) => <Icon name="ShoppingCart" {...props} />,
+            Heart: (props) => <Icon name="Heart" {...props} />,
+            Star: (props) => <Icon name="Star" {...props} />,
+            User: (props) => <Icon name="User" {...props} />,
+            Mail: (props) => <Icon name="Mail" {...props} />,
+            Phone: (props) => <Icon name="Phone" {...props} />,
+            MapPin: (props) => <Icon name="MapPin" {...props} />,
+            Calendar: (props) => <Icon name="Calendar" {...props} />,
+            Clock: (props) => <Icon name="Clock" {...props} />,
+            Tag: (props) => <Icon name="Tag" {...props} />,
+            Search: (props) => <Icon name="Search" {...props} />,
+            Filter: (props) => <Icon name="Filter" {...props} />,
+            SortAsc: (props) => <Icon name="SortAsc" {...props} />,
+            SortDesc: (props) => <Icon name="SortDesc" {...props} />,
+            MoreHorizontal: (props) => <Icon name="MoreHorizontal" {...props} />,
+            MoreVertical: (props) => <Icon name="MoreVertical" {...props} />,
+            Grid: (props) => <Icon name="Grid" {...props} />,
+            List: (props) => <Icon name="List" {...props} />,
+            ExternalLink: (props) => <Icon name="ExternalLink" {...props} />,
+            Ghost: (props) => <Icon name="Ghost" {...props} />,
+            Scissors: (props) => <Icon name="Scissors" {...props} />,
+            Briefcase: (props) => <Icon name="Briefcase" {...props} />,
+            Coins: (props) => <Icon name="Coins" {...props} />,
+            MessageSquare: (props) => <Icon name="MessageSquare" {...props} />,
+            Edit3: (props) => <Icon name="Edit3" {...props} />,
+            FileText: (props) => <Icon name="FileText" {...props} />,
+            EyeOff: (props) => <Icon name="EyeOff" {...props} />,
+            Moon: (props) => <Icon name="Moon" {...props} />,
+            Sun: (props) => <Icon name="Sun" {...props} />,
+            Menu: (props) => <Icon name="Menu" {...props} />,
+            Smartphone: (props) => <Icon name="Smartphone" {...props} />,
+            Instagram: (props) => <Icon name="Instagram" {...props} />,
+            Facebook: (props) => <Icon name="Facebook" {...props} />,
+            Twitter: (props) => <Icon name="Twitter" {...props} />,
+            Chrome: (props) => <Icon name="Chrome" {...props} />,
+            CreditCard: (props) => <Icon name="CreditCard" {...props} />,
+            PlusCircle: (props) => <Icon name="PlusCircle" {...props} />,
+            MinusCircle: (props) => <Icon name="MinusCircle" {...props} />,
+            Layout: (props) => <Icon name="Layout" {...props} />,
+            Box: (props) => <Icon name="Box" {...props} />,
+            Brush: (props) => <Icon name="Brush" {...props} />,
+            Gem: (props) => <Icon name="Gem" {...props} />,
+            Coffee: (props) => <Icon name="Coffee" {...props} />,
+            Code: (props) => <Icon name="Code" {...props} />,
+            Music: (props) => <Icon name="Music" {...props} />,
+            Video: (props) => <Icon name="Video" {...props} />,
+            Play: (props) => <Icon name="Play" {...props} />,
+            Pause: (props) => <Icon name="Pause" {...props} />,
+            Link: (props) => <Icon name="Link" {...props} />,
+        };
+
+        // Replace direct Lucide imports in the original code
+        // 
+function App() {
   const [prompt, setPrompt] = useState('cat');
   const [extraPrompt, setExtraPrompt] = useState('');
   const [handPosition, setHandPosition] = useState('belly');
@@ -441,3 +576,545 @@ STYLE:
     </div>
   );
 }
+
+        const Upload = Lucide.Upload;
+        const Download = Lucide.Download;
+        const Wand2 = Lucide.Wand2;
+        const Image = Lucide.Image;
+        const Sparkles = Lucide.Sparkles;
+        const RefreshCw = Lucide.RefreshCw;
+        const X = Lucide.X;
+        const Palette = Lucide.Palette;
+        const Zap = Lucide.Zap;
+        const AlertTriangle = Lucide.AlertTriangle;
+        const CheckCircle = Lucide.CheckCircle;
+        const Info = Lucide.Info;
+        const XCircle = Lucide.XCircle;
+        const Settings = Lucide.Settings;
+        const Printer = Lucide.Printer;
+        const BarChart = Lucide.BarChart;
+        const Layers = Lucide.Layers;
+        const PaintBucket = Lucide.PaintBucket;
+        const Eraser = Lucide.Eraser;
+        const Maximize = Lucide.Maximize;
+        const ZoomIn = Lucide.ZoomIn;
+        const ZoomOut = Lucide.ZoomOut;
+        const Scan = Lucide.Scan;
+        const Flame = Lucide.Flame;
+        const ChevronRight = Lucide.ChevronRight;
+        const ChevronLeft = Lucide.ChevronLeft;
+        const Languages = Lucide.Languages;
+        const Copy = Lucide.Copy;
+        const Check = Lucide.Check;
+        const Type = Lucide.Type;
+        const Volume2 = Lucide.Volume2;
+        const Mic = Lucide.Mic;
+        const Send = Lucide.Send;
+        const Trash2 = Lucide.Trash2;
+        const Plus = Lucide.Plus;
+        const Minus = Lucide.Minus;
+        const HelpCircle = Lucide.HelpCircle;
+        const ShieldCheck = Lucide.ShieldCheck;
+        const Lock = Lucide.Lock;
+        const Eye = Lucide.Eye;
+        const History = Lucide.History;
+        const Share2 = Lucide.Share2;
+        const ShoppingCart = Lucide.ShoppingCart;
+        const Heart = Lucide.Heart;
+        const Star = Lucide.Star;
+        const User = Lucide.User;
+        const Mail = Lucide.Mail;
+        const Phone = Lucide.Phone;
+        const MapPin = Lucide.MapPin;
+        const Calendar = Lucide.Calendar;
+        const Clock = Lucide.Clock;
+        const Tag = Lucide.Tag;
+        const Search = Lucide.Search;
+        const Filter = Lucide.Filter;
+        const SortAsc = Lucide.SortAsc;
+        const SortDesc = Lucide.SortDesc;
+        const MoreHorizontal = Lucide.MoreHorizontal;
+        const MoreVertical = Lucide.MoreVertical;
+        const Grid = Lucide.Grid;
+        const List = Lucide.List;
+        const ExternalLink = Lucide.ExternalLink;
+        const Ghost = Lucide.Ghost;
+        const Scissors = Lucide.Scissors;
+        const Briefcase = Lucide.Briefcase;
+        const Coins = Lucide.Coins;
+        const MessageSquare = Lucide.MessageSquare;
+        const Edit3 = Lucide.Edit3;
+        const FileText = Lucide.FileText;
+        const EyeOff = Lucide.EyeOff;
+        const Moon = Lucide.Moon;
+        const Sun = Lucide.Sun;
+        const Menu = Lucide.Menu;
+        const Smartphone = Lucide.Smartphone;
+        const Instagram = Lucide.Instagram;
+        const Facebook = Lucide.Facebook;
+        const Twitter = Lucide.Twitter;
+        const Chrome = Lucide.Chrome;
+        const CreditCard = Lucide.CreditCard;
+        const PlusCircle = Lucide.PlusCircle;
+        const MinusCircle = Lucide.MinusCircle;
+        const Layout = Lucide.Layout;
+        const Box = Lucide.Box;
+        const Brush = Lucide.Brush;
+        const Gem = Lucide.Gem;
+        const Coffee = Lucide.Coffee;
+        const Code = Lucide.Code;
+        const Music = Lucide.Music;
+        const Video = Lucide.Video;
+        const Play = Lucide.Play;
+        const Pause = Lucide.Pause;
+        const Link = Lucide.Link;
+
+        
+function App() {
+  const [prompt, setPrompt] = useState('cat');
+  const [extraPrompt, setExtraPrompt] = useState('');
+  const [handPosition, setHandPosition] = useState('belly');
+  const [poseType, setPoseType] = useState('sitting');
+  const [eyeSize, setEyeSize] = useState('6mm'); // 動眼サイズの状態
+  const [eyeExpression, setEyeExpression] = useState('normal'); // 目の表情
+  const [imageUrls, setImageUrls] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState('');
+  
+  const [refImageBase64, setRefImageBase64] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const hasLimbs = prompt !== 'snake';
+
+  const fetchWithRetry = async (url, options, retries = 5) => {
+    const delays = [1000, 2000, 4000, 8000, 16000];
+    for (let i = 0; i < retries; i++) {
+      try {
+        const res = await fetch(url, options);
+        if (res.ok) return res;
+        if (i === retries - 1) throw new Error('API Error');
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        await new Promise(r => setTimeout(r, delays[i]));
+      }
+    }
+  };
+
+  const analyzeImage = async (base64Data) => {
+    const apiKey = "";
+    const url = `/api/ai`;
+    
+    const payload = {
+      contents: [{
+        parts: [
+          { text: "Describe the specific facial features, markings, and patterns of this character in 2 short sentences in English. Focus on unique identifiers like spots, stripes, or ear shapes." },
+          { inlineData: { mimeType: "image/png", data: base64Data.split(',')[1] } }
+        ]
+      }]
+    };
+
+    const res = await fetchWithRetry(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  };
+
+  const generateImage = async () => {
+    if (!prompt.trim()) return;
+    setIsLoading(true);
+    setError('');
+    setImageUrls([]);
+
+    try {
+      const apiKey = ""; 
+      const imagenUrl = `/api/ai`;
+
+      let analyzedFeatures = "";
+      if (refImageBase64) {
+        analyzedFeatures = await analyzeImage(refImageBase64);
+      }
+
+      const getAnimalDetails = (input) => {
+        switch(input) {
+          case 'cat': return { type: "Cat", features: "pointy triangular cat ears, long whiskers, long tail", sole: "cute fleshy cat paw pads" };
+          case 'mouse': return { type: "Mouse", features: "big round mouse ears, long whiskers, thin tail", sole: "plain thin bare toes. NO paw pads." };
+          case 'cow': return { type: "Cow", features: "cow horns, cow ears, tufted tail", sole: "cloven hooves. NO pads." };
+          case 'tiger': return { type: "Tiger", features: "clear tiger stripes, tiger ears, whiskers, striped tail", sole: "fleshy tiger paw pads" };
+          case 'rabbit': return { type: "Rabbit", features: "long rabbit ears, whiskers, fluffy tail", sole: "pure fluffy fur soles. NO pads." };
+          case 'dragon': return { type: "Dragon", features: "horns, scales, dragon tail", sole: "reptilian claws. NO pads." };
+          case 'snake': return { type: "Snake", features: "scales, coiled body", sole: "no feet" };
+          case 'horse': return { type: "Horse", features: "mane, horse ears, flowing tail", sole: "solid hard hooves. NO pads." };
+          case 'sheep': return { type: "Sheep", features: "thick wool, sheep ears", sole: "cloven hooves. NO pads." };
+          case 'monkey': return { type: "Monkey", features: "round ears, long monkey tail", sole: "bare skin soles like hands. NO pads." };
+          case 'chicken': return { type: "Chicken", features: "comb, wings, tail feathers", sole: "scaly bird feet with thin talons. NO pads." };
+          case 'dog': return { type: "Dog", features: "distinct dog ears, snout, tail", sole: "fleshy dog paw pads" };
+          case 'boar': return { type: "Wild Boar", features: "tusks, boar snout", sole: "cloven hooves. NO pads." };
+          default: return { type: "Animal", features: "species features", sole: "appropriate details" };
+        }
+      };
+
+      const details = getAnimalDetails(prompt);
+      const visualContext = `Incorporate these specific features: ${analyzedFeatures}. ${extraPrompt.trim() ? `Additional instructions: ${extraPrompt}.` : ''}`;
+
+      let anatomyRule = hasLimbs 
+        ? `STRICT ANATOMY: Exactly 4 limbs total. ONE pair of front arms and ONE pair of hind legs. ABSOLUTELY NO extra limbs.`
+        : `STRICT ANATOMY: SNAKE. ZERO limbs. No arms, no legs.`;
+
+      let poseRule = "";
+      let shadowRule = "ABSOLUTELY NO shading, NO shadows beneath the character.";
+
+      if (hasLimbs) {
+        const handPosMap = {
+          chest: "The ONLY TWO front arms MUST be resting high up on the chest area.",
+          raised: "The ONLY TWO front arms MUST be raised high above the head in the air.",
+          cheeks: "The ONLY TWO front arms MUST be touching the face cheeks.",
+          belly: "The ONLY TWO front arms MUST be resting in the middle of the belly.",
+          ground: "The ONLY TWO front arms MUST be resting firmly on the ground at the very bottom line."
+        };
+        const poseDetail = poseType === 'standing' 
+          ? `Pose: Standing upright on two short legs. The bottom boundary is a smooth U-shape curve.` 
+          : `Pose: Sitting like a teddy bear. Hind feet soles must face forward showing ${details.sole}.`;
+        
+        if (handPosition === 'ground') {
+          poseRule = `${poseDetail} ${handPosMap[handPosition]} Front paws MUST touch the bottom ground line.`;
+          shadowRule = "Add a small, flat, simple solid pure black oval shadow directly beneath the character's base where it touches the ground.";
+        } else {
+          poseRule = `${poseDetail} ${handPosMap[handPosition]} CRITICAL: The front arms MUST be far above the bottom ground line. The bottom is a single smooth unbroken curve.`;
+        }
+      } else {
+        poseRule = `A single coiled smooth body. Smooth bottom curve.`;
+      }
+
+      // 目のサイズ指示の分岐
+      let eyeScaleDesc = "";
+      if (eyeSize === '7mm') {
+        eyeScaleDesc = "EYES: MUST be perfectly circular BLANK WHITE holes. Thick black outline only. ABSOLUTELY NO black pupils, NO fill. Pure white inside. The blank eye circles MUST be slightly larger and wider, optimized for 7mm googly eyes.";
+      } else if (eyeSize === '6mm') {
+        eyeScaleDesc = "EYES: MUST be perfectly circular BLANK WHITE holes. Thick black outline only. ABSOLUTELY NO black pupils, NO fill. Pure white inside. The blank eye circles MUST be moderate size, optimized for 6mm googly eyes.";
+      } else {
+        const expressionMap = {
+          normal: "Cute big round eyes with black pupils and white catchlights.",
+          smiling: "Happy smiling eyes, shaped like an inverted U or arch (^ ^).",
+          winking: "One eye is open and round, the other eye is closed in a happy wink.",
+          sparkling: "Sparkling starry eyes with large shining catchlights.",
+          angry: "Angry sharp eyes with slanted eyebrows.",
+          crying: "Sad teary eyes with large tears."
+        };
+        eyeScaleDesc = `EYES: Draw expressive character eyes. ${expressionMap[eyeExpression]}`;
+      }
+
+      const systemPrompt = `Strictly two-color pure black and white line art ONLY. ABSOLUTELY NO gray, NO grayscale, NO halftones. NO colors. 
+A cute kawaii Chibi ${details.type}. ${details.features}. ${visualContext}
+Solid pure black thick lines, completely pure white background.
+PROPORTIONS: RIDICULOUSLY massive oversized head (80% of height). Tiny thin body.
+${eyeScaleDesc}
+
+${anatomyRule}
+${poseRule}
+
+ENVIRONMENT:
+- ABSOLUTELY NO horizon, NO floor lines. Background must be COMPLETELY EMPTY PURE WHITE.
+- ${shadowRule}
+
+STYLE:
+- Perfectly symmetrical silhouette. 
+- NO cross-hatching, NO complex shading, NO gradients.
+- ABSOLUTELY NO TEXT, NO LETTERS, NO WORDS, NO SIGNATURES, NO WATERMARKS. The image must contain zero characters or typography of any kind.
+- MUST be strictly pure black and white ONLY.`;
+
+      const payload = {
+        instances: { prompt: systemPrompt },
+        parameters: { sampleCount: 3 }
+      };
+
+      const res = await fetchWithRetry(imagenUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (data.predictions && data.predictions.length > 0) {
+        setImageUrls(data.predictions.map(p => `data:image/png;base64,${p.bytesBase64Encoded}`));
+      } else {
+        throw new Error('No image data');
+      }
+    } catch (err) {
+      setError('生成に失敗しました。');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const processFile = (file) => {
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onloadend = () => setRefImageBase64(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    processFile(e.target.files[0]);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    processFile(file);
+  };
+
+  const handleDownload = (url, index) => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `character_${prompt}_${index + 1}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-pink-100 via-purple-50 to-blue-100 flex flex-col items-center py-8 px-4 font-sans text-gray-700">
+      <div className="w-full max-w-2xl bg-white/90 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(236,72,153,0.15)] p-6 space-y-6 border border-white">
+        <div className="text-center">
+          <h1 className="text-2xl font-black tracking-tight text-purple-900 uppercase flex items-center justify-center gap-2">
+            <Sparkles className="text-pink-400" size={24} />
+            AI対称キャラクター生成器
+            <Sparkles className="text-blue-400" size={24} />
+          </h1>
+          <p className="text-[10px] text-purple-400 font-bold uppercase tracking-widest mt-1">Pure Black & White Googly Eye Mode</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div className="bg-white/60 p-5 rounded-2xl border border-purple-100 shadow-sm space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-purple-600 uppercase mb-2">参考画像（ドラッグ＆ドロップ可）</label>
+                {!refImageBase64 ? (
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current.click()}
+                    className={`w-full h-28 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer
+                      ${isDragging ? 'border-pink-400 bg-pink-50 scale-105 shadow-inner' : 'border-purple-200 text-purple-400 hover:bg-purple-50/50 hover:border-purple-300'}`}
+                  >
+                    <Upload size={24} className={`mb-1 transition-transform ${isDragging ? 'scale-125 text-pink-500' : ''}`} />
+                    <span className="text-[10px] font-bold text-center px-2">画像をここにドロップ または クリック</span>
+                  </div>
+                ) : (
+                  <div className="relative w-full h-28 rounded-2xl overflow-hidden border-2 border-purple-200 group shadow-sm">
+                    <img src={refImageBase64} alt="Reference" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-pink-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                      <button 
+                        onClick={() => setRefImageBase64(null)}
+                        className="bg-white text-pink-500 p-2 rounded-full shadow-lg hover:scale-110 hover:text-pink-600 transition"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1">動物の種類</label>
+                  <select
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border-2 border-purple-100 bg-white/80 text-sm outline-none font-bold appearance-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100 transition-all text-gray-700"
+                    disabled={isLoading}
+                  >
+                    <option value="cat">猫 (ネコ)</option>
+                    <option value="mouse">子 (ネズミ)</option>
+                    <option value="cow">丑 (ウシ)</option>
+                    <option value="tiger">寅 (トラ)</option>
+                    <option value="rabbit">卯 (ウサギ)</option>
+                    <option value="dragon">辰 (リュウ)</option>
+                    <option value="snake">巳 (ヘビ)</option>
+                    <option value="horse">午 (ウマ)</option>
+                    <option value="sheep">未 (ヒツジ)</option>
+                    <option value="monkey">申 (サル)</option>
+                    <option value="chicken">酉 (ニワトリ)</option>
+                    <option value="dog">戌 (イヌ)</option>
+                    <option value="boar">亥 (イノシシ)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1">目のタイプ</label>
+                  <select
+                    value={eyeSize}
+                    onChange={(e) => setEyeSize(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border-2 border-purple-100 bg-white/80 text-xs outline-none appearance-none font-bold text-blue-500 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all"
+                    disabled={isLoading}
+                  >
+                    <option value="6mm">白抜き (6mm用)</option>
+                    <option value="7mm">白抜き (7mm用)</option>
+                    <option value="drawn">イラスト描画</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1">
+                    {eyeSize === 'drawn' ? '目の表情' : '目の情報'}
+                  </label>
+                  {eyeSize === 'drawn' ? (
+                    <select
+                      value={eyeExpression}
+                      onChange={(e) => setEyeExpression(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border-2 border-purple-100 bg-white/80 text-xs outline-none appearance-none font-bold text-pink-500 focus:border-pink-300 focus:ring-2 focus:ring-pink-100 transition-all"
+                      disabled={isLoading}
+                    >
+                      <option value="normal">普通</option>
+                      <option value="smiling">笑顔 (^ ^)</option>
+                      <option value="winking">ウインク</option>
+                      <option value="sparkling">キラキラ</option>
+                      <option value="angry">怒り</option>
+                      <option value="crying">泣き</option>
+                    </select>
+                  ) : (
+                    <div className="w-full px-3 py-2 rounded-xl border-2 border-transparent bg-purple-50/50 text-xs text-purple-400 flex items-center h-[36px] justify-center font-medium">
+                      動眼スペース
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1">ポーズ</label>
+                  <select
+                    value={poseType}
+                    onChange={(e) => setPoseType(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border-2 border-purple-100 bg-white/80 text-xs outline-none appearance-none focus:border-pink-300 transition-all text-gray-700"
+                    disabled={isLoading || !hasLimbs}
+                  >
+                    <option value="sitting">お座り</option>
+                    <option value="standing">立っち</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-purple-600 uppercase mb-1">手の位置</label>
+                  <select
+                    value={handPosition}
+                    onChange={(e) => setHandPosition(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl border-2 border-purple-100 bg-white/80 text-xs outline-none appearance-none focus:border-pink-300 transition-all text-gray-700 ${!hasLimbs ? 'opacity-30' : 'opacity-100'}`}
+                    disabled={isLoading || !hasLimbs}
+                  >
+                    <option value="belly">お腹（浮かせる）</option>
+                    <option value="chest">胸（浮かせる）</option>
+                    <option value="raised">万歳</option>
+                    <option value="cheeks">ほっぺた</option>
+                    <option value="ground">地面につける</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-purple-600 uppercase mb-1">追加指示</label>
+                <input
+                  type="text"
+                  value={extraPrompt}
+                  onChange={(e) => setExtraPrompt(e.target.value)}
+                  placeholder="例: 王冠、しま模様"
+                  className="w-full px-4 py-2.5 rounded-xl border-2 border-purple-100 bg-white/80 text-sm outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100 transition-all text-gray-700 placeholder:text-purple-300"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={generateImage}
+              disabled={isLoading || !prompt.trim()}
+              className="w-full bg-gradient-to-r from-pink-400 to-purple-500 text-white py-4 rounded-2xl font-black text-lg transition-all transform active:scale-95 disabled:from-gray-300 disabled:to-gray-400 shadow-lg shadow-pink-200 hover:shadow-pink-300 hover:from-pink-500 hover:to-purple-600"
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center">
+                  <Loader2 className="animate-spin mr-2 w-5 h-5" />
+                  解析＆生成中...
+                </div>
+              ) : (
+                '画像を生成する (3枚)'
+              )}
+            </button>
+            {error && <div className="text-pink-600 text-xs text-center font-bold p-2 bg-pink-50 rounded-xl border border-pink-100">{error}</div>}
+          </div>
+
+          <div className="flex flex-col bg-blue-50/80 p-5 rounded-2xl border border-blue-100 text-gray-700 text-xs space-y-4 shadow-sm">
+            <h2 className="font-black text-sm border-b border-blue-200 pb-2 text-blue-800 flex items-center">
+              <Eye size={16} className="mr-2 text-blue-500" /> 目の設定ガイド
+            </h2>
+            <ul className="space-y-3">
+              <li>
+                <strong className="text-blue-600 bg-blue-100 px-1 rounded">白抜き (6mm/7mm)</strong><br/>
+                シール状の「動眼」を後から貼るためのスペースを空けます。工作や立体感を出したい時に便利です。
+              </li>
+              <li>
+                <strong className="text-pink-500 bg-pink-100 px-1 rounded">イラスト描画</strong><br/>
+                AIが直接キャラクターに目を描き込みます。「笑顔」や「ウインク」などの可愛い表情も指定可能です。
+              </li>
+              <li>
+                <strong className="text-purple-600 bg-purple-100 px-1 rounded">対称性について</strong><br/>
+                どの設定を選んでも、顔の輪郭や体の対称性は維持されます（ウインクなど一部の表情を除く）。
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
+          {[0, 1, 2].map((index) => (
+            <div key={index} className="flex flex-col space-y-3">
+              <div className="aspect-square w-full bg-white rounded-2xl flex items-center justify-center overflow-hidden border-4 border-purple-50 shadow-sm relative group">
+                {imageUrls[index] ? (
+                  <>
+                    <img src={imageUrls[index]} alt={`Generated ${index}`} className="w-full h-full object-contain" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-pink-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                  </>
+                ) : (
+                  <div className="text-purple-200 flex flex-col items-center">
+                    <ImageIcon size={32} className="mb-2 opacity-50" />
+                    <span className="font-bold text-[10px] uppercase tracking-widest opacity-60">Variant {index + 1}</span>
+                  </div>
+                )}
+              </div>
+              {imageUrls[index] && (
+                <button 
+                  onClick={() => handleDownload(imageUrls[index], index)}
+                  className="w-full py-2 bg-white text-purple-600 text-xs font-black rounded-xl border-2 border-purple-200 hover:bg-purple-500 hover:text-white hover:border-purple-500 transition-all flex items-center justify-center uppercase shadow-sm"
+                >
+                  <Download size={14} className="mr-2" /> 保存する
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

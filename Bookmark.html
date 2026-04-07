@@ -1,6 +1,141 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Settings, Download, Image as ImageIcon, Sparkles, Sliders, LayoutTemplate, AlignCenter, AlignVerticalJustifyCenter, AlignEndHorizontal, PenTool, Contrast, RotateCw, Maximize, Scaling, Grid, CheckCircle, Move, ZoomIn, ZoomOut } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookmarkDesigner - Linklabo AI Tool</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100">
+    <div id="root"></div>
 
+    <script type="text/babel">
+        const { useState, useRef, useEffect, useMemo } = React;
+
+        // --- Lucide Icon Helper ---
+        // Replace Lucide components with a wrapper that uses lucide-static
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const ref = useRef(null);
+            useEffect(() => {
+                if (ref.current) {
+                    const icon = lucide.icons[name];
+                    if (icon) {
+                        const svg = lucide.createIcons({
+                            icons: { [name]: icon },
+                            nameAttr: 'data-lucide',
+                            attrs: { 'stroke-width': 2, width: size, height: size, class: className }
+                        });
+                    }
+                }
+            }, [name, size, className]);
+            return <i ref={ref} data-lucide={name.toLowerCase()} className={className} style={ { width: size, height: size, display: 'inline-block' } }></i>;
+        };
+
+        // Mock Lucide components for the React code
+        const Lucide = {
+            Upload: (props) => <Icon name="Upload" {...props} />,
+            Download: (props) => <Icon name="Download" {...props} />,
+            Wand2: (props) => <Icon name="Wand2" {...props} />,
+            Image: (props) => <Icon name="Image" {...props} />,
+            Sparkles: (props) => <Icon name="Sparkles" {...props} />,
+            RefreshCw: (props) => <Icon name="RefreshCw" {...props} />,
+            X: (props) => <Icon name="X" {...props} />,
+            Palette: (props) => <Icon name="Palette" {...props} />,
+            Zap: (props) => <Icon name="Zap" {...props} />,
+            AlertTriangle: (props) => <Icon name="AlertTriangle" {...props} />,
+            CheckCircle: (props) => <Icon name="CheckCircle" {...props} />,
+            Info: (props) => <Icon name="Info" {...props} />,
+            XCircle: (props) => <Icon name="XCircle" {...props} />,
+            Settings: (props) => <Icon name="Settings" {...props} />,
+            Printer: (props) => <Icon name="Printer" {...props} />,
+            BarChart: (props) => <Icon name="BarChart" {...props} />,
+            Layers: (props) => <Icon name="Layers" {...props} />,
+            PaintBucket: (props) => <Icon name="PaintBucket" {...props} />,
+            Eraser: (props) => <Icon name="Eraser" {...props} />,
+            Maximize: (props) => <Icon name="Maximize" {...props} />,
+            ZoomIn: (props) => <Icon name="ZoomIn" {...props} />,
+            ZoomOut: (props) => <Icon name="ZoomOut" {...props} />,
+            Scan: (props) => <Icon name="Scan" {...props} />,
+            Flame: (props) => <Icon name="Flame" {...props} />,
+            ChevronRight: (props) => <Icon name="ChevronRight" {...props} />,
+            ChevronLeft: (props) => <Icon name="ChevronLeft" {...props} />,
+            Languages: (props) => <Icon name="Languages" {...props} />,
+            Copy: (props) => <Icon name="Copy" {...props} />,
+            Check: (props) => <Icon name="Check" {...props} />,
+            Type: (props) => <Icon name="Type" {...props} />,
+            Volume2: (props) => <Icon name="Volume2" {...props} />,
+            Mic: (props) => <Icon name="Mic" {...props} />,
+            Send: (props) => <Icon name="Send" {...props} />,
+            Trash2: (props) => <Icon name="Trash2" {...props} />,
+            Plus: (props) => <Icon name="Plus" {...props} />,
+            Minus: (props) => <Icon name="Minus" {...props} />,
+            HelpCircle: (props) => <Icon name="HelpCircle" {...props} />,
+            ShieldCheck: (props) => <Icon name="ShieldCheck" {...props} />,
+            Lock: (props) => <Icon name="Lock" {...props} />,
+            Eye: (props) => <Icon name="Eye" {...props} />,
+            History: (props) => <Icon name="History" {...props} />,
+            Share2: (props) => <Icon name="Share2" {...props} />,
+            ShoppingCart: (props) => <Icon name="ShoppingCart" {...props} />,
+            Heart: (props) => <Icon name="Heart" {...props} />,
+            Star: (props) => <Icon name="Star" {...props} />,
+            User: (props) => <Icon name="User" {...props} />,
+            Mail: (props) => <Icon name="Mail" {...props} />,
+            Phone: (props) => <Icon name="Phone" {...props} />,
+            MapPin: (props) => <Icon name="MapPin" {...props} />,
+            Calendar: (props) => <Icon name="Calendar" {...props} />,
+            Clock: (props) => <Icon name="Clock" {...props} />,
+            Tag: (props) => <Icon name="Tag" {...props} />,
+            Search: (props) => <Icon name="Search" {...props} />,
+            Filter: (props) => <Icon name="Filter" {...props} />,
+            SortAsc: (props) => <Icon name="SortAsc" {...props} />,
+            SortDesc: (props) => <Icon name="SortDesc" {...props} />,
+            MoreHorizontal: (props) => <Icon name="MoreHorizontal" {...props} />,
+            MoreVertical: (props) => <Icon name="MoreVertical" {...props} />,
+            Grid: (props) => <Icon name="Grid" {...props} />,
+            List: (props) => <Icon name="List" {...props} />,
+            ExternalLink: (props) => <Icon name="ExternalLink" {...props} />,
+            Ghost: (props) => <Icon name="Ghost" {...props} />,
+            Scissors: (props) => <Icon name="Scissors" {...props} />,
+            Briefcase: (props) => <Icon name="Briefcase" {...props} />,
+            Coins: (props) => <Icon name="Coins" {...props} />,
+            MessageSquare: (props) => <Icon name="MessageSquare" {...props} />,
+            Edit3: (props) => <Icon name="Edit3" {...props} />,
+            FileText: (props) => <Icon name="FileText" {...props} />,
+            EyeOff: (props) => <Icon name="EyeOff" {...props} />,
+            Moon: (props) => <Icon name="Moon" {...props} />,
+            Sun: (props) => <Icon name="Sun" {...props} />,
+            Menu: (props) => <Icon name="Menu" {...props} />,
+            Smartphone: (props) => <Icon name="Smartphone" {...props} />,
+            Instagram: (props) => <Icon name="Instagram" {...props} />,
+            Facebook: (props) => <Icon name="Facebook" {...props} />,
+            Twitter: (props) => <Icon name="Twitter" {...props} />,
+            Chrome: (props) => <Icon name="Chrome" {...props} />,
+            CreditCard: (props) => <Icon name="CreditCard" {...props} />,
+            PlusCircle: (props) => <Icon name="PlusCircle" {...props} />,
+            MinusCircle: (props) => <Icon name="MinusCircle" {...props} />,
+            Layout: (props) => <Icon name="Layout" {...props} />,
+            Box: (props) => <Icon name="Box" {...props} />,
+            Brush: (props) => <Icon name="Brush" {...props} />,
+            Gem: (props) => <Icon name="Gem" {...props} />,
+            Coffee: (props) => <Icon name="Coffee" {...props} />,
+            Code: (props) => <Icon name="Code" {...props} />,
+            Music: (props) => <Icon name="Music" {...props} />,
+            Video: (props) => <Icon name="Video" {...props} />,
+            Play: (props) => <Icon name="Play" {...props} />,
+            Pause: (props) => <Icon name="Pause" {...props} />,
+            Link: (props) => <Icon name="Link" {...props} />,
+        };
+
+        // Replace direct Lucide imports in the original code
+        // 
 // --- Utility Components & Functions ---
 
 // Simple Spinner Component
@@ -71,7 +206,7 @@ const PATTERNS = {
   }
 };
 
-export default function BookmarkDesigner() {
+function BookmarkDesigner() {
   // State
   const [width, setWidth] = useState(32); // mm
   const [height, setHeight] = useState(120); // mm
@@ -844,3 +979,948 @@ export default function BookmarkDesigner() {
     </div>
   );
 }
+
+        const Upload = Lucide.Upload;
+        const Download = Lucide.Download;
+        const Wand2 = Lucide.Wand2;
+        const Image = Lucide.Image;
+        const Sparkles = Lucide.Sparkles;
+        const RefreshCw = Lucide.RefreshCw;
+        const X = Lucide.X;
+        const Palette = Lucide.Palette;
+        const Zap = Lucide.Zap;
+        const AlertTriangle = Lucide.AlertTriangle;
+        const CheckCircle = Lucide.CheckCircle;
+        const Info = Lucide.Info;
+        const XCircle = Lucide.XCircle;
+        const Settings = Lucide.Settings;
+        const Printer = Lucide.Printer;
+        const BarChart = Lucide.BarChart;
+        const Layers = Lucide.Layers;
+        const PaintBucket = Lucide.PaintBucket;
+        const Eraser = Lucide.Eraser;
+        const Maximize = Lucide.Maximize;
+        const ZoomIn = Lucide.ZoomIn;
+        const ZoomOut = Lucide.ZoomOut;
+        const Scan = Lucide.Scan;
+        const Flame = Lucide.Flame;
+        const ChevronRight = Lucide.ChevronRight;
+        const ChevronLeft = Lucide.ChevronLeft;
+        const Languages = Lucide.Languages;
+        const Copy = Lucide.Copy;
+        const Check = Lucide.Check;
+        const Type = Lucide.Type;
+        const Volume2 = Lucide.Volume2;
+        const Mic = Lucide.Mic;
+        const Send = Lucide.Send;
+        const Trash2 = Lucide.Trash2;
+        const Plus = Lucide.Plus;
+        const Minus = Lucide.Minus;
+        const HelpCircle = Lucide.HelpCircle;
+        const ShieldCheck = Lucide.ShieldCheck;
+        const Lock = Lucide.Lock;
+        const Eye = Lucide.Eye;
+        const History = Lucide.History;
+        const Share2 = Lucide.Share2;
+        const ShoppingCart = Lucide.ShoppingCart;
+        const Heart = Lucide.Heart;
+        const Star = Lucide.Star;
+        const User = Lucide.User;
+        const Mail = Lucide.Mail;
+        const Phone = Lucide.Phone;
+        const MapPin = Lucide.MapPin;
+        const Calendar = Lucide.Calendar;
+        const Clock = Lucide.Clock;
+        const Tag = Lucide.Tag;
+        const Search = Lucide.Search;
+        const Filter = Lucide.Filter;
+        const SortAsc = Lucide.SortAsc;
+        const SortDesc = Lucide.SortDesc;
+        const MoreHorizontal = Lucide.MoreHorizontal;
+        const MoreVertical = Lucide.MoreVertical;
+        const Grid = Lucide.Grid;
+        const List = Lucide.List;
+        const ExternalLink = Lucide.ExternalLink;
+        const Ghost = Lucide.Ghost;
+        const Scissors = Lucide.Scissors;
+        const Briefcase = Lucide.Briefcase;
+        const Coins = Lucide.Coins;
+        const MessageSquare = Lucide.MessageSquare;
+        const Edit3 = Lucide.Edit3;
+        const FileText = Lucide.FileText;
+        const EyeOff = Lucide.EyeOff;
+        const Moon = Lucide.Moon;
+        const Sun = Lucide.Sun;
+        const Menu = Lucide.Menu;
+        const Smartphone = Lucide.Smartphone;
+        const Instagram = Lucide.Instagram;
+        const Facebook = Lucide.Facebook;
+        const Twitter = Lucide.Twitter;
+        const Chrome = Lucide.Chrome;
+        const CreditCard = Lucide.CreditCard;
+        const PlusCircle = Lucide.PlusCircle;
+        const MinusCircle = Lucide.MinusCircle;
+        const Layout = Lucide.Layout;
+        const Box = Lucide.Box;
+        const Brush = Lucide.Brush;
+        const Gem = Lucide.Gem;
+        const Coffee = Lucide.Coffee;
+        const Code = Lucide.Code;
+        const Music = Lucide.Music;
+        const Video = Lucide.Video;
+        const Play = Lucide.Play;
+        const Pause = Lucide.Pause;
+        const Link = Lucide.Link;
+
+        
+// --- Utility Components & Functions ---
+
+// Simple Spinner Component
+const Spinner = () => (
+  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-amber-600"></div>
+);
+
+// Wood Texture Component (CSS-based simulation)
+const WoodTexture = ({ className = "" }) => (
+  <div className={`absolute inset-0 pointer-events-none opacity-30 ${className}`} 
+       style={{
+         backgroundImage: `
+           repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(160,82,45,0.05) 10px, rgba(160,82,45,0.05) 20px),
+           url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.4'/%3E%3C/svg%3E")
+         `,
+         filter: 'sepia(0.6) contrast(1.2)'
+       }}
+  />
+);
+
+// --- Patterns (Metadata for AI Prompts) ---
+const PATTERNS = {
+  none: {
+    name: '柄なし (None)',
+    isNone: true,
+  },
+  // --- 幾何学模様 ---
+  asanoha: {
+    name: '麻の葉 (Asanoha)',
+    promptKeyword: 'Asanoha (hemp leaf) geometric pattern, seamless',
+  },
+  seigaiha: {
+    name: '青海波 (Seigaiha)',
+    promptKeyword: 'Seigaiha (blue ocean waves) traditional pattern, seamless',
+  },
+  ichimatsu: {
+    name: '市松 (Checkers)',
+    promptKeyword: 'Ichimatsu (checkered) traditional Japanese pattern, seamless',
+  },
+  stripes: {
+    name: '縦縞 (Stripes)',
+    promptKeyword: 'Vertical stripes simple pattern, seamless',
+  },
+  // --- 新しい和風モチーフ ---
+  hanafuda: {
+    name: '花札 (Hanafuda)',
+    promptKeyword: 'Hanafuda card style, retro Japanese floral playing cards design, bold graphic nature motifs',
+  },
+  ukiyoe: {
+    name: '浮世絵 (Ukiyo-e)',
+    promptKeyword: 'Ukiyo-e style woodblock print texture, traditional Japanese art style, dramatic lines',
+  },
+  wagara: {
+    name: '和柄 (Wagara)',
+    promptKeyword: 'Traditional Japanese patterns (Wagara), kimono fabric style, elegant and detailed',
+  },
+  hanafubuki: {
+    name: '花吹雪 (Petal Blizzard)',
+    promptKeyword: 'Falling flower petals, wind blowing cherry blossom petals, dynamic flow, hanafubuki',
+  },
+  sakura: {
+    name: '桜 (Cherry Blossoms)',
+    promptKeyword: 'Sakura (Cherry Blossom) floral pattern, spring theme, gentle flowers',
+  },
+  ume: {
+    name: '梅 (Plum Blossoms)',
+    promptKeyword: 'Ume (Plum Blossom) floral pattern, rounded petals, classic Japanese aesthetic',
+  }
+};
+
+function BookmarkDesigner() {
+  // State
+  const [width, setWidth] = useState(32); // mm
+  const [height, setHeight] = useState(120); // mm
+  
+  // AI Params
+  const [selectedPattern, setSelectedPattern] = useState('none'); // Default to None
+  const [prompt, setPrompt] = useState('うさぎ, 月見');
+  const [layoutMode, setLayoutMode] = useState('full'); // 'full', 'fit', 'stretch', 'tile', 'center'
+  const [complexity, setComplexity] = useState('normal'); // 'simple'(bold), 'normal', 'detailed'
+  
+  const [aiImage, setAiImage] = useState(null); // Currently selected image object
+  const [candidates, setCandidates] = useState([]); // Array of { id, img }
+  const [selectedCandidateId, setSelectedCandidateId] = useState(null);
+
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isFallback, setIsFallback] = useState(false); // Track if using fallback
+  const [threshold, setThreshold] = useState(128); // 0-255 for binarization
+  const [inverted, setInverted] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Layout Transformation State (Drag & Zoom)
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [scale, setScale] = useState(1.0); // 1.0 = 100%
+  const [isDragging, setIsDragging] = useState(false);
+  const lastMousePosRef = useRef({ x: 0, y: 0 });
+
+  const canvasRef = useRef(null);
+  const hiddenLinkRef = useRef(null);
+
+  // Constants
+  const PIXELS_PER_MM = 11.81; // Approx 300 DPI (300 / 25.4)
+  
+  // --- Logic ---
+
+  // Reset transform when layout mode or image changes
+  useEffect(() => {
+    setOffset({ x: 0, y: 0 });
+    setScale(1.0);
+  }, [layoutMode, aiImage, width, height]);
+
+  // Toggle Orientation (Swap width and height)
+  const toggleOrientation = () => {
+    setWidth(prevW => {
+      const newW = height;
+      setHeight(prevW);
+      return newW;
+    });
+  };
+
+  // Helper: Load Image from Source
+  const loadImage = (src) => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+    });
+  };
+
+  // Fallback Generation using Gemini Flash (SVG)
+  const generateFallbackSVG = async (enhancedPrompt, variationIndex = 0) => {
+    console.log(`Attempting fallback SVG variation ${variationIndex + 1}...`);
+    const apiKey = ""; // Injected at runtime
+    const url = `/api/ai`;
+
+    // Add variation instruction to prompt
+    const variationPrompt = `Variation ${variationIndex + 1}: Make this design distinct from others. ${enhancedPrompt}`;
+
+    const svgPrompt = `
+      You are an SVG generator for laser engraving.
+      Create a black and white SVG code for: ${variationPrompt}
+      
+      Requirements:
+      - Output ONLY the raw <svg>...</svg> code.
+      - Do NOT use markdown blocks (no \`\`\`xml).
+      - Use "black" for filled shapes and "none" or "white" for background.
+      - Keep it simple and bold.
+      - Do NOT include any text, letters, or numbers.
+      - ViewBox should be "0 0 ${width} ${height}". 
+      - Ensure the design fits within this ${width}:${height} aspect ratio.
+    `;
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: [{ parts: [{ text: svgPrompt }] }]
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error(`Fallback API failed: ${response.status}`);
+    }
+
+    const result = await response.json();
+    let svgText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!svgText) throw new Error("No SVG generated");
+
+    // Clean up markdown if present
+    svgText = svgText.replace(/```xml/g, '').replace(/```svg/g, '').replace(/```/g, '').trim();
+    
+    // Convert to base64 image
+    const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+    const urlObj = URL.createObjectURL(svgBlob);
+    
+    return await loadImage(urlObj);
+  };
+
+  // Generate Image using Gemini/Imagen
+  const generateImage = async () => {
+    // Validate inputs
+    const patternObj = PATTERNS[selectedPattern];
+    const hasPattern = patternObj && !patternObj.isNone;
+
+    if (!prompt && !hasPattern) {
+        setError("プロンプトを入力するか、ベースの柄を選択してください。");
+        return;
+    }
+
+    setIsGenerating(true);
+    setIsFallback(false);
+    setError(null);
+    setCandidates([]); // Clear previous candidates
+    setAiImage(null);
+    setOffset({ x: 0, y: 0 }); // Reset transform
+    setScale(1.0);
+
+    // Prepare Prompt
+    let patternInstruction = "";
+    if (hasPattern) {
+        patternInstruction = `The design must incorporate the "${patternObj.promptKeyword}" as a background texture or integrated motif.`;
+    }
+
+    let subjectPrompt = prompt;
+    if (!subjectPrompt && hasPattern) {
+        subjectPrompt = `Decorative ${patternObj.name} design`;
+    }
+
+    // --- Aspect Ratio Logic ---
+    const ratio = width / height;
+    const preciseRatioString = ratio < 1 
+      ? `1:${(1/ratio).toFixed(2)}` 
+      : `${ratio.toFixed(2)}:1`;
+
+    let apiAspectRatio = "1:1"; 
+    
+    if (ratio <= 0.6) { 
+        apiAspectRatio = "9:16";
+    } else if (ratio < 0.85) { 
+        apiAspectRatio = "3:4";
+    } else if (ratio >= 1.6) { 
+        apiAspectRatio = "16:9";
+    } else if (ratio > 1.2) { 
+        apiAspectRatio = "4:3";
+    }
+
+    let layoutInstruction = "";
+    if (layoutMode === 'full' || layoutMode === 'stretch' || layoutMode === 'tile') {
+        layoutInstruction = `Full page composition, aspect ratio ${preciseRatioString}, pattern covering the entire available surface area. Wallpaper style design.`;
+    } else {
+        layoutInstruction = `Small isolated spot illustration, strictly surrounded by empty white space. Minimalist emblem style. Do not fill the background.`;
+    }
+
+    let complexityInstruction = "";
+    if (complexity === 'simple') {
+        complexityInstruction = "Extremely simple, extra thick lines, minimal details, solid black silhouettes, bold graphic style, high readability.";
+    } else if (complexity === 'normal') {
+        complexityInstruction = "Very simple, thick bold lines, low detail, chunky shapes, easy to carve, stencil style.";
+    } else { 
+        complexityInstruction = "Balanced detail, standard vector art, clear lines, some texture.";
+    }
+
+    const enhancedPrompt = `
+      NEGATIVE PROMPT: text, letters, typography, watermark, signature, words, alphabet, numbers.
+      Create a black and white vector-style illustration for laser engraving.
+      Target Dimensions: ${width}mm (W) x ${height}mm (H).
+      Target Aspect Ratio: ${preciseRatioString}.
+      Subject: ${subjectPrompt}.
+      ${patternInstruction}
+      Composition: ${layoutInstruction}
+      Complexity: ${complexityInstruction}
+      Style: High contrast, clean lines, no shading, monochrome, minimalist, stencil art.
+      Ensure the background is pure white and the lines are pure black.
+      IMPORTANT: No text, no letters, no characters, no typography. Image only.
+    `;
+      
+    // API Call with Retry Logic
+    try {
+        const apiKey = ""; // Injected at runtime
+        const url = `/api/ai`;
+        
+        let attempt = 0;
+        let result = null;
+        const maxRetries = 1; 
+
+        while (attempt <= maxRetries) {
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      instances: [{ prompt: enhancedPrompt }],
+                      parameters: { 
+                          sampleCount: 3, // Request 3 images
+                          aspectRatio: apiAspectRatio 
+                      } 
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`Imagen API Attempt ${attempt + 1} failed:`, errorText);
+                    if (response.status === 400 && attempt === 0) {
+                         console.warn("Retrying without aspectRatio param...");
+                    }
+                    throw new Error(`Status ${response.status}`);
+                }
+
+                result = await response.json();
+                break; // Success
+
+            } catch (e) {
+                attempt++;
+                if (attempt > maxRetries) throw e;
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+
+        // Process Result (Expect multiple predictions)
+        const predictions = result?.predictions || [];
+        
+        if (predictions.length > 0) {
+            // Convert all base64 to Image objects
+            const loadedImages = await Promise.all(predictions.map(async (p, idx) => {
+                const img = await loadImage(`data:image/png;base64,${p.bytesBase64Encoded}`);
+                return { id: idx, img: img };
+            }));
+
+            setCandidates(loadedImages);
+            setAiImage(loadedImages[0].img); // Select first by default
+            setSelectedCandidateId(0);
+            setIsGenerating(false);
+        } else {
+            throw new Error('No image data returned.');
+        }
+
+    } catch (err) {
+      console.warn("Primary generation failed, switching to fallback:", err);
+      // Fallback to SVG generation (Generate 3 variations in parallel)
+      try {
+          setIsFallback(true);
+          
+          // Parallel requests for 3 variations
+          const svgPromises = [0, 1, 2].map(idx => generateFallbackSVG(enhancedPrompt, idx));
+          const svgImages = await Promise.all(svgPromises);
+          
+          const loadedCandidates = svgImages.map((img, idx) => ({ id: idx, img }));
+
+          setCandidates(loadedCandidates);
+          setAiImage(loadedCandidates[0].img);
+          setSelectedCandidateId(0);
+          setIsGenerating(false);
+      } catch (fallbackErr) {
+          console.error(fallbackErr);
+          setError("画像の生成に失敗しました。時間を置いて再度お試しください。");
+          setIsGenerating(false);
+      }
+    }
+  };
+
+  const handleSelectCandidate = (candidate) => {
+      setAiImage(candidate.img);
+      setSelectedCandidateId(candidate.id);
+  };
+
+  // --- Canvas Interaction Handlers (Drag & Zoom) ---
+  const handleMouseDown = (e) => {
+    if (!aiImage) return;
+    setIsDragging(true);
+    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging || !aiImage) return;
+    
+    // Calculate drag delta
+    const deltaX = e.clientX - lastMousePosRef.current.x;
+    const deltaY = e.clientY - lastMousePosRef.current.y;
+    
+    // Update last pos
+    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+    
+    // Scale delta to canvas space
+    const scaleFactor = PIXELS_PER_MM / 3;
+    
+    setOffset(prev => ({
+        x: prev.x + (deltaX * scaleFactor),
+        y: prev.y + (deltaY * scaleFactor)
+    }));
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+  
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleWheel = (e) => {
+    if (!aiImage) return;
+    // Simple wheel zoom
+    const delta = -e.deltaY;
+    const zoomSpeed = 0.001; 
+    const newScale = Math.max(0.1, Math.min(5.0, scale + delta * zoomSpeed));
+    setScale(newScale);
+  };
+
+  // Shared Drawing Logic
+  const drawDesign = useCallback((ctx, drawWidth, drawHeight, includeGuides) => {
+    // Clear background (White paper)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, drawWidth, drawHeight);
+
+    // Draw Content (AI Image Only)
+    if (aiImage) {
+        let drawW, drawH, baseX, baseY;
+
+        // "Cover" vs "Contain" vs "Stretch" vs "Tile" Logic
+        if (layoutMode === 'tile') {
+             // Tiling / Repeat
+             // Scale applies to the tile size
+             const baseScale = drawWidth / aiImage.width; // Fits width by default
+             const tileScale = baseScale * scale;
+             
+             const tileW = aiImage.width * tileScale;
+             const tileH = aiImage.height * tileScale;
+             
+             // Draw repeatedly
+             const cols = Math.ceil(drawWidth / tileW) + 2; 
+             const rows = Math.ceil(drawHeight / tileH) + 2;
+             
+             // Apply offset to start position (loop phase shift)
+             const startX = (offset.x % tileW) - tileW;
+             const startY = (offset.y % tileH) - tileH;
+             
+             for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    ctx.drawImage(aiImage, startX + (c * tileW), startY + (r * tileH), tileW, tileH);
+                }
+             }
+
+        } else {
+             // Calculate Base Dimensions based on Mode
+             if (layoutMode === 'stretch') {
+                drawW = drawWidth * scale;
+                drawH = drawHeight * scale;
+             } else if (layoutMode === 'full') {
+                const baseScale = Math.max(drawWidth / aiImage.width, drawHeight / aiImage.height);
+                drawW = aiImage.width * baseScale * scale;
+                drawH = aiImage.height * baseScale * scale;
+             } else if (layoutMode === 'fit') {
+                const baseScale = Math.min(drawWidth / aiImage.width, drawHeight / aiImage.height);
+                drawW = aiImage.width * baseScale * scale;
+                drawH = aiImage.height * baseScale * scale;
+             } else { // Center/Spot
+                const targetWidth = drawWidth * 0.8;
+                const fitScale = Math.min(targetWidth / aiImage.width, (drawHeight * 0.8) / aiImage.height);
+                drawW = aiImage.width * fitScale * scale;
+                drawH = aiImage.height * fitScale * scale;
+             }
+
+             // Calculate centered position for the scaled image
+             baseX = (drawWidth - drawW) / 2;
+             baseY = (drawHeight - drawH) / 2;
+
+             // Apply manual offset
+             ctx.drawImage(aiImage, baseX + offset.x, baseY + offset.y, drawW, drawH);
+        }
+
+        // Binarization (Thresholding)
+        const imageData = ctx.getImageData(0, 0, drawWidth, drawHeight);
+        const data = imageData.data;
+        
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            // Grayscale
+            const avg = 0.299 * r + 0.587 * g + 0.114 * b;
+            
+            // Threshold
+            let val = avg < threshold ? 0 : 255;
+            
+            if (inverted) val = 255 - val;
+
+            data[i] = val;     // R
+            data[i + 1] = val; // G
+            data[i + 2] = val; // B
+        }
+        ctx.putImageData(imageData, 0, 0);
+    } else {
+        // Placeholder text if no image
+        ctx.fillStyle = "#e5e5e5";
+        ctx.font = `bold ${4 * PIXELS_PER_MM}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("NO IMAGE", drawWidth/2, drawHeight/2);
+    }
+    
+    // Draw Guides (Border & Hole) - Only if requested
+    if (includeGuides) {
+        // Draw Border (Cut line)
+        ctx.strokeStyle = '#FF0000'; // Red is typically "Cut"
+        ctx.lineWidth = 4;
+        ctx.strokeRect(0, 0, drawWidth, drawHeight);
+    }
+  }, [aiImage, layoutMode, threshold, inverted, offset, scale, PIXELS_PER_MM]);
+
+  // Main Canvas Effect (Preview)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    
+    // Set actual canvas size (high res for print)
+    const canvasWidth = width * PIXELS_PER_MM;
+    const canvasHeight = height * PIXELS_PER_MM;
+    
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+
+    // Draw with Guides
+    drawDesign(ctx, canvasWidth, canvasHeight, true);
+
+  }, [width, height, drawDesign, PIXELS_PER_MM]);
+
+  const handleDownload = () => {
+      const tempCanvas = document.createElement('canvas');
+      const canvasWidth = width * PIXELS_PER_MM;
+      const canvasHeight = height * PIXELS_PER_MM;
+      
+      tempCanvas.width = canvasWidth;
+      tempCanvas.height = canvasHeight;
+      const ctx = tempCanvas.getContext('2d');
+
+      // Draw without Guides
+      drawDesign(ctx, canvasWidth, canvasHeight, false);
+
+      const dataUrl = tempCanvas.toDataURL('image/png');
+      const link = hiddenLinkRef.current;
+      link.href = dataUrl;
+      link.download = `bookmark-design-ai.png`;
+      link.click();
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-stone-50 text-stone-800 font-sans overflow-hidden">
+      {/* Header */}
+      <header className="bg-amber-900 text-white p-4 shadow-md flex items-center justify-between z-10">
+        <div className="flex items-center gap-2">
+           <ImageIcon className="w-6 h-6" />
+           <h1 className="text-xl font-bold tracking-wide">LaserCraft Shiori Maker</h1>
+        </div>
+        <div className="text-xs opacity-75">v3.2.0 (Zoom & Drag)</div>
+      </header>
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar: Controls */}
+        <aside className="w-full md:w-80 bg-white border-r border-stone-200 overflow-y-auto p-6 flex flex-col gap-8 shadow-inner z-10">
+            
+            {/* 1. Size Settings */}
+            <section>
+                <h2 className="flex items-center gap-2 text-sm font-bold text-stone-500 uppercase mb-4">
+                    <Sliders className="w-4 h-4" /> 1. サイズ設定 (mm)
+                </h2>
+                <div className="flex items-end gap-2">
+                    <div className="grid grid-cols-2 gap-4 flex-1">
+                        <div>
+                            <label className="block text-xs font-medium text-stone-500 mb-1">幅 (Width)</label>
+                            <input 
+                                type="number" 
+                                value={width} 
+                                onChange={(e) => setWidth(Number(e.target.value))}
+                                className="w-full p-2 border border-stone-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-stone-500 mb-1">高さ (Height)</label>
+                            <input 
+                                type="number" 
+                                value={height} 
+                                onChange={(e) => setHeight(Number(e.target.value))}
+                                className="w-full p-2 border border-stone-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            />
+                        </div>
+                    </div>
+                    <button 
+                        onClick={toggleOrientation}
+                        className="mb-1 p-2 bg-stone-100 hover:bg-amber-100 text-stone-500 hover:text-amber-700 border border-stone-200 hover:border-amber-300 rounded transition-all active:scale-95"
+                        title="縦横を入れ替え"
+                    >
+                        <RotateCw className="w-5 h-5" />
+                    </button>
+                </div>
+            </section>
+
+            {/* 2. AI Design Settings */}
+            <section className="flex flex-col gap-4 animate-in fade-in duration-500">
+                <h2 className="flex items-center gap-2 text-sm font-bold text-stone-500 uppercase">
+                   <Settings className="w-4 h-4" /> 2. デザイン生成
+                </h2>
+                
+                {/* Pattern Selection for AI */}
+                <div>
+                    <label className="block text-xs font-medium text-stone-500 mb-2 flex items-center gap-1">
+                        <LayoutTemplate className="w-3 h-3" /> ベースの柄 (オプション)
+                    </label>
+                    <select 
+                        value={selectedPattern}
+                        onChange={(e) => setSelectedPattern(e.target.value)}
+                        className="w-full p-2 border border-stone-300 rounded text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white"
+                    >
+                        {Object.entries(PATTERNS).map(([key, pat]) => (
+                            <option key={key} value={key}>{pat.name}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Layout Selection */}
+                <div>
+                    <label className="block text-xs font-medium text-stone-500 mb-2 flex items-center gap-1">
+                        <AlignVerticalJustifyCenter className="w-3 h-3" /> レイアウト配置
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                         <button 
+                            onClick={() => setLayoutMode('full')}
+                            className={`p-2 rounded border text-xs flex items-center justify-center gap-2 transition-all ${layoutMode === 'full' ? 'border-amber-500 bg-amber-50 text-amber-900' : 'border-stone-200 text-stone-500 hover:bg-stone-50'}`}
+                        >
+                            <LayoutTemplate className="w-4 h-4" />
+                            全体 (Cover)
+                        </button>
+                         <button 
+                            onClick={() => setLayoutMode('tile')}
+                            className={`p-2 rounded border text-xs flex items-center justify-center gap-2 transition-all ${layoutMode === 'tile' ? 'border-amber-500 bg-amber-50 text-amber-900' : 'border-stone-200 text-stone-500 hover:bg-stone-50'}`}
+                        >
+                            <Grid className="w-4 h-4" />
+                            繰り返し (Tile)
+                        </button>
+                        <button 
+                            onClick={() => setLayoutMode('fit')}
+                            className={`p-2 rounded border text-xs flex items-center justify-center gap-2 transition-all ${layoutMode === 'fit' ? 'border-amber-500 bg-amber-50 text-amber-900' : 'border-stone-200 text-stone-500 hover:bg-stone-50'}`}
+                        >
+                            <Maximize className="w-4 h-4" />
+                            枠内 (Fit)
+                        </button>
+                        <button 
+                            onClick={() => setLayoutMode('stretch')}
+                            className={`p-2 rounded border text-xs flex items-center justify-center gap-2 transition-all ${layoutMode === 'stretch' ? 'border-amber-500 bg-amber-50 text-amber-900' : 'border-stone-200 text-stone-500 hover:bg-stone-50'}`}
+                        >
+                            <Scaling className="w-4 h-4" />
+                            強制 (Stretch)
+                        </button>
+                    </div>
+                </div>
+
+                 {/* Complexity Selection */}
+                 <div>
+                    <label className="block text-xs font-medium text-stone-500 mb-2 flex items-center gap-1">
+                        <PenTool className="w-3 h-3" /> 線の太さ・詳細度
+                    </label>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={() => setComplexity('simple')}
+                            className={`flex-1 p-2 rounded border text-xs transition-all ${complexity === 'simple' ? 'border-amber-500 bg-amber-50 text-amber-900' : 'border-stone-200 text-stone-500 hover:bg-stone-50'}`}
+                        >
+                            太め<br/>(シンプル)
+                        </button>
+                        <button 
+                            onClick={() => setComplexity('normal')}
+                            className={`flex-1 p-2 rounded border text-xs transition-all ${complexity === 'normal' ? 'border-amber-500 bg-amber-50 text-amber-900' : 'border-stone-200 text-stone-500 hover:bg-stone-50'}`}
+                        >
+                            普通<br/>(標準)
+                        </button>
+                        <button 
+                            onClick={() => setComplexity('detailed')}
+                            className={`flex-1 p-2 rounded border text-xs transition-all ${complexity === 'detailed' ? 'border-amber-500 bg-amber-50 text-amber-900' : 'border-stone-200 text-stone-500 hover:bg-stone-50'}`}
+                        >
+                            詳細<br/>(細かい)
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-xs font-medium text-stone-500 mb-2">プロンプト (モチーフやテーマ)</label>
+                    <textarea 
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        placeholder="例: 猫のシルエット, 桜吹雪 (空欄でも可)"
+                        className="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none text-sm h-20 resize-none"
+                    />
+                </div>
+                
+                <button 
+                    onClick={generateImage}
+                    disabled={isGenerating}
+                    className="w-full py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white rounded-lg font-bold shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {isGenerating ? <Spinner /> : <Sparkles className="w-5 h-5" />}
+                    {isGenerating ? (isFallback ? '代替モデルで3枚生成中...' : '3パターン生成 (実行)') : '3パターン生成'}
+                </button>
+                
+                {error && (
+                    <div className="p-3 bg-red-50 text-red-600 text-xs rounded border border-red-100 mt-2">
+                        {error}
+                    </div>
+                )}
+                
+                {/* Candidates List */}
+                {candidates.length > 0 && (
+                    <div className="mt-4">
+                        <label className="block text-xs font-medium text-stone-500 mb-2">生成された候補 (選択してください)</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {candidates.map((cand) => (
+                                <button
+                                    key={cand.id}
+                                    onClick={() => handleSelectCandidate(cand)}
+                                    className={`relative aspect-square rounded-md overflow-hidden border-2 transition-all ${selectedCandidateId === cand.id ? 'border-amber-600 ring-2 ring-amber-200' : 'border-stone-200 hover:border-amber-300'}`}
+                                >
+                                    {/* Using bg-contain ensures the whole image is visible even if aspect ratio differs from square thumbnail */}
+                                    <div 
+                                        className="w-full h-full bg-contain bg-center bg-no-repeat"
+                                        style={{ backgroundImage: `url(${cand.img.src})`, backgroundColor: '#f5f5f4' }}
+                                    />
+                                    {selectedCandidateId === cand.id && (
+                                        <div className="absolute top-1 right-1 bg-white rounded-full text-amber-600">
+                                            <CheckCircle className="w-4 h-4 fill-white" />
+                                        </div>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {aiImage && (
+                    <div className="border-t border-stone-200 pt-4 mt-2">
+                        <label className="block text-xs font-medium text-stone-500 mb-2 flex justify-between items-center">
+                            <span className="flex items-center gap-1"><Contrast className="w-3 h-3"/> 黒の領域調整 (Black Amount)</span>
+                            <span className="bg-stone-100 px-2 py-0.5 rounded text-stone-600">{Math.round((threshold / 255) * 100)}%</span>
+                        </label>
+                        <input 
+                            type="range" 
+                            min="0" max="255" 
+                            value={threshold} 
+                            onChange={(e) => setThreshold(Number(e.target.value))}
+                            className="w-full accent-amber-600 h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <div className="flex justify-between text-[10px] text-stone-400 mt-1">
+                            <span>少ない (細く)</span>
+                            <span>多い (太く)</span>
+                        </div>
+                        
+                        <div className="mt-4 flex items-center gap-2">
+                            <button 
+                                onClick={() => setInverted(!inverted)}
+                                className={`flex-1 py-2 text-xs border rounded transition-colors ${inverted ? 'bg-stone-800 text-white' : 'bg-white text-stone-800 border-stone-300'}`}
+                            >
+                                {inverted ? '白黒反転: ON' : '白黒反転: OFF'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </section>
+
+            <div className="mt-auto pt-4 border-t border-stone-200">
+                 <button 
+                    onClick={handleDownload}
+                    className="w-full py-3 bg-stone-800 hover:bg-stone-700 text-white rounded-lg font-bold shadow flex items-center justify-center gap-2 transition-all active:scale-95"
+                >
+                    <Download className="w-5 h-5" />
+                    画像のみ保存 (PNG)
+                </button>
+                <p className="text-[10px] text-center text-stone-400 mt-2">
+                    ※赤線（カットライン）は含まれません
+                </p>
+            </div>
+        </aside>
+
+        {/* Right Area: Preview */}
+        <main className="flex-1 bg-stone-200 relative overflow-auto flex items-center justify-center p-8">
+            
+            {/* Background Texture (Desk) */}
+            <div className="absolute inset-0 bg-[url('[https://www.transparenttextures.com/patterns/wood-pattern.png](https://www.transparenttextures.com/patterns/wood-pattern.png)')] opacity-50 pointer-events-none mix-blend-multiply"></div>
+
+            {/* The Bookmark Preview Container */}
+            <div className="relative shadow-2xl transition-all duration-500 ease-out transform group"
+                 style={{
+                     width: `${width * 3}px`, // Display scale factor
+                     height: `${height * 3}px`,
+                 }}>
+                 
+                 {/* Wood Texture of the bookmark itself */}
+                 <div className="absolute inset-0 bg-amber-100 rounded-sm overflow-hidden border border-amber-200/50">
+                    <WoodTexture />
+                 </div>
+                
+                {/* Canvas Overlay for BOTH Modes (The real data) */}
+                <canvas 
+                    ref={canvasRef}
+                    className={`absolute inset-0 w-full h-full mix-blend-multiply opacity-90 cursor-move active:cursor-grabbing ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                    style={{ objectFit: 'contain' }}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseLeave}
+                    onWheel={handleWheel}
+                />
+
+                {/* Move Hint Overlay (Visible on hover if image exists) */}
+                {aiImage && (
+                    <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-2">
+                        <div className="self-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 text-white/80 rounded-full p-2 backdrop-blur-sm">
+                            <Move className="w-6 h-6" />
+                        </div>
+                        
+                        {/* Zoom Controls Overlay */}
+                        <div className="self-end opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm p-2 rounded shadow-lg border border-stone-200 pointer-events-auto flex items-center gap-2">
+                             <button 
+                                onClick={() => setScale(s => Math.max(0.1, s - 0.1))}
+                                className="p-1 hover:bg-stone-100 rounded text-stone-600"
+                             >
+                                <ZoomOut className="w-4 h-4" />
+                             </button>
+                             <input 
+                                type="range" 
+                                min="0.1" 
+                                max="3.0" 
+                                step="0.1" 
+                                value={scale} 
+                                onChange={(e) => setScale(Number(e.target.value))}
+                                className="w-20 accent-amber-600 h-1 bg-stone-200 rounded-lg appearance-none"
+                             />
+                             <button 
+                                onClick={() => setScale(s => Math.min(3.0, s + 0.1))}
+                                className="p-1 hover:bg-stone-100 rounded text-stone-600"
+                             >
+                                <ZoomIn className="w-4 h-4" />
+                             </button>
+                             <span className="text-[10px] w-8 text-right font-mono text-stone-500">
+                                {Math.round(scale * 100)}%
+                             </span>
+                        </div>
+                    </div>
+                )}
+
+            </div>
+
+            {/* Dimensions Indicator */}
+            <div className="absolute bottom-8 right-8 bg-white/90 backdrop-blur px-4 py-2 rounded-full text-xs font-mono text-stone-600 shadow border border-stone-200">
+                {width}mm × {height}mm
+            </div>
+        </main>
+      </div>
+
+      {/* Hidden Link for Download */}
+      <a ref={hiddenLinkRef} style={{ display: 'none' }} />
+    </div>
+  );
+}
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<BookmarkDesigner />);
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<BookmarkDesigner />);
+    </script>
+</body>
+</html>

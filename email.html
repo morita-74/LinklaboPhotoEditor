@@ -1,7 +1,142 @@
-import React, { useState, useRef } from 'react';
-import { Mail, Copy, CheckCircle2, AlertCircle, UploadCloud, Loader2, Send, MessageSquare, Package, Truck, AlertOctagon, MoreHorizontal, Smartphone, AtSign } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App - Linklabo AI Tool</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100">
+    <div id="root"></div>
 
-export default function App() {
+    <script type="text/babel">
+        const { useState, useRef, useEffect, useMemo } = React;
+
+        // --- Lucide Icon Helper ---
+        // Replace Lucide components with a wrapper that uses lucide-static
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const ref = useRef(null);
+            useEffect(() => {
+                if (ref.current) {
+                    const icon = lucide.icons[name];
+                    if (icon) {
+                        const svg = lucide.createIcons({
+                            icons: { [name]: icon },
+                            nameAttr: 'data-lucide',
+                            attrs: { 'stroke-width': 2, width: size, height: size, class: className }
+                        });
+                    }
+                }
+            }, [name, size, className]);
+            return <i ref={ref} data-lucide={name.toLowerCase()} className={className} style={ { width: size, height: size, display: 'inline-block' } }></i>;
+        };
+
+        // Mock Lucide components for the React code
+        const Lucide = {
+            Upload: (props) => <Icon name="Upload" {...props} />,
+            Download: (props) => <Icon name="Download" {...props} />,
+            Wand2: (props) => <Icon name="Wand2" {...props} />,
+            Image: (props) => <Icon name="Image" {...props} />,
+            Sparkles: (props) => <Icon name="Sparkles" {...props} />,
+            RefreshCw: (props) => <Icon name="RefreshCw" {...props} />,
+            X: (props) => <Icon name="X" {...props} />,
+            Palette: (props) => <Icon name="Palette" {...props} />,
+            Zap: (props) => <Icon name="Zap" {...props} />,
+            AlertTriangle: (props) => <Icon name="AlertTriangle" {...props} />,
+            CheckCircle: (props) => <Icon name="CheckCircle" {...props} />,
+            Info: (props) => <Icon name="Info" {...props} />,
+            XCircle: (props) => <Icon name="XCircle" {...props} />,
+            Settings: (props) => <Icon name="Settings" {...props} />,
+            Printer: (props) => <Icon name="Printer" {...props} />,
+            BarChart: (props) => <Icon name="BarChart" {...props} />,
+            Layers: (props) => <Icon name="Layers" {...props} />,
+            PaintBucket: (props) => <Icon name="PaintBucket" {...props} />,
+            Eraser: (props) => <Icon name="Eraser" {...props} />,
+            Maximize: (props) => <Icon name="Maximize" {...props} />,
+            ZoomIn: (props) => <Icon name="ZoomIn" {...props} />,
+            ZoomOut: (props) => <Icon name="ZoomOut" {...props} />,
+            Scan: (props) => <Icon name="Scan" {...props} />,
+            Flame: (props) => <Icon name="Flame" {...props} />,
+            ChevronRight: (props) => <Icon name="ChevronRight" {...props} />,
+            ChevronLeft: (props) => <Icon name="ChevronLeft" {...props} />,
+            Languages: (props) => <Icon name="Languages" {...props} />,
+            Copy: (props) => <Icon name="Copy" {...props} />,
+            Check: (props) => <Icon name="Check" {...props} />,
+            Type: (props) => <Icon name="Type" {...props} />,
+            Volume2: (props) => <Icon name="Volume2" {...props} />,
+            Mic: (props) => <Icon name="Mic" {...props} />,
+            Send: (props) => <Icon name="Send" {...props} />,
+            Trash2: (props) => <Icon name="Trash2" {...props} />,
+            Plus: (props) => <Icon name="Plus" {...props} />,
+            Minus: (props) => <Icon name="Minus" {...props} />,
+            HelpCircle: (props) => <Icon name="HelpCircle" {...props} />,
+            ShieldCheck: (props) => <Icon name="ShieldCheck" {...props} />,
+            Lock: (props) => <Icon name="Lock" {...props} />,
+            Eye: (props) => <Icon name="Eye" {...props} />,
+            History: (props) => <Icon name="History" {...props} />,
+            Share2: (props) => <Icon name="Share2" {...props} />,
+            ShoppingCart: (props) => <Icon name="ShoppingCart" {...props} />,
+            Heart: (props) => <Icon name="Heart" {...props} />,
+            Star: (props) => <Icon name="Star" {...props} />,
+            User: (props) => <Icon name="User" {...props} />,
+            Mail: (props) => <Icon name="Mail" {...props} />,
+            Phone: (props) => <Icon name="Phone" {...props} />,
+            MapPin: (props) => <Icon name="MapPin" {...props} />,
+            Calendar: (props) => <Icon name="Calendar" {...props} />,
+            Clock: (props) => <Icon name="Clock" {...props} />,
+            Tag: (props) => <Icon name="Tag" {...props} />,
+            Search: (props) => <Icon name="Search" {...props} />,
+            Filter: (props) => <Icon name="Filter" {...props} />,
+            SortAsc: (props) => <Icon name="SortAsc" {...props} />,
+            SortDesc: (props) => <Icon name="SortDesc" {...props} />,
+            MoreHorizontal: (props) => <Icon name="MoreHorizontal" {...props} />,
+            MoreVertical: (props) => <Icon name="MoreVertical" {...props} />,
+            Grid: (props) => <Icon name="Grid" {...props} />,
+            List: (props) => <Icon name="List" {...props} />,
+            ExternalLink: (props) => <Icon name="ExternalLink" {...props} />,
+            Ghost: (props) => <Icon name="Ghost" {...props} />,
+            Scissors: (props) => <Icon name="Scissors" {...props} />,
+            Briefcase: (props) => <Icon name="Briefcase" {...props} />,
+            Coins: (props) => <Icon name="Coins" {...props} />,
+            MessageSquare: (props) => <Icon name="MessageSquare" {...props} />,
+            Edit3: (props) => <Icon name="Edit3" {...props} />,
+            FileText: (props) => <Icon name="FileText" {...props} />,
+            EyeOff: (props) => <Icon name="EyeOff" {...props} />,
+            Moon: (props) => <Icon name="Moon" {...props} />,
+            Sun: (props) => <Icon name="Sun" {...props} />,
+            Menu: (props) => <Icon name="Menu" {...props} />,
+            Smartphone: (props) => <Icon name="Smartphone" {...props} />,
+            Instagram: (props) => <Icon name="Instagram" {...props} />,
+            Facebook: (props) => <Icon name="Facebook" {...props} />,
+            Twitter: (props) => <Icon name="Twitter" {...props} />,
+            Chrome: (props) => <Icon name="Chrome" {...props} />,
+            CreditCard: (props) => <Icon name="CreditCard" {...props} />,
+            PlusCircle: (props) => <Icon name="PlusCircle" {...props} />,
+            MinusCircle: (props) => <Icon name="MinusCircle" {...props} />,
+            Layout: (props) => <Icon name="Layout" {...props} />,
+            Box: (props) => <Icon name="Box" {...props} />,
+            Brush: (props) => <Icon name="Brush" {...props} />,
+            Gem: (props) => <Icon name="Gem" {...props} />,
+            Coffee: (props) => <Icon name="Coffee" {...props} />,
+            Code: (props) => <Icon name="Code" {...props} />,
+            Music: (props) => <Icon name="Music" {...props} />,
+            Video: (props) => <Icon name="Video" {...props} />,
+            Play: (props) => <Icon name="Play" {...props} />,
+            Pause: (props) => <Icon name="Pause" {...props} />,
+            Link: (props) => <Icon name="Link" {...props} />,
+        };
+
+        // Replace direct Lucide imports in the original code
+        // 
+function App() {
   const [media, setMedia] = useState('メール'); // 'メール' or 'DM'
   const [category, setCategory] = useState('商品購入');
   const [formData, setFormData] = useState({
@@ -381,3 +516,485 @@ Instagram：https://www.instagram.com/linklabo2026/
     </div>
   );
 }
+
+        const Upload = Lucide.Upload;
+        const Download = Lucide.Download;
+        const Wand2 = Lucide.Wand2;
+        const Image = Lucide.Image;
+        const Sparkles = Lucide.Sparkles;
+        const RefreshCw = Lucide.RefreshCw;
+        const X = Lucide.X;
+        const Palette = Lucide.Palette;
+        const Zap = Lucide.Zap;
+        const AlertTriangle = Lucide.AlertTriangle;
+        const CheckCircle = Lucide.CheckCircle;
+        const Info = Lucide.Info;
+        const XCircle = Lucide.XCircle;
+        const Settings = Lucide.Settings;
+        const Printer = Lucide.Printer;
+        const BarChart = Lucide.BarChart;
+        const Layers = Lucide.Layers;
+        const PaintBucket = Lucide.PaintBucket;
+        const Eraser = Lucide.Eraser;
+        const Maximize = Lucide.Maximize;
+        const ZoomIn = Lucide.ZoomIn;
+        const ZoomOut = Lucide.ZoomOut;
+        const Scan = Lucide.Scan;
+        const Flame = Lucide.Flame;
+        const ChevronRight = Lucide.ChevronRight;
+        const ChevronLeft = Lucide.ChevronLeft;
+        const Languages = Lucide.Languages;
+        const Copy = Lucide.Copy;
+        const Check = Lucide.Check;
+        const Type = Lucide.Type;
+        const Volume2 = Lucide.Volume2;
+        const Mic = Lucide.Mic;
+        const Send = Lucide.Send;
+        const Trash2 = Lucide.Trash2;
+        const Plus = Lucide.Plus;
+        const Minus = Lucide.Minus;
+        const HelpCircle = Lucide.HelpCircle;
+        const ShieldCheck = Lucide.ShieldCheck;
+        const Lock = Lucide.Lock;
+        const Eye = Lucide.Eye;
+        const History = Lucide.History;
+        const Share2 = Lucide.Share2;
+        const ShoppingCart = Lucide.ShoppingCart;
+        const Heart = Lucide.Heart;
+        const Star = Lucide.Star;
+        const User = Lucide.User;
+        const Mail = Lucide.Mail;
+        const Phone = Lucide.Phone;
+        const MapPin = Lucide.MapPin;
+        const Calendar = Lucide.Calendar;
+        const Clock = Lucide.Clock;
+        const Tag = Lucide.Tag;
+        const Search = Lucide.Search;
+        const Filter = Lucide.Filter;
+        const SortAsc = Lucide.SortAsc;
+        const SortDesc = Lucide.SortDesc;
+        const MoreHorizontal = Lucide.MoreHorizontal;
+        const MoreVertical = Lucide.MoreVertical;
+        const Grid = Lucide.Grid;
+        const List = Lucide.List;
+        const ExternalLink = Lucide.ExternalLink;
+        const Ghost = Lucide.Ghost;
+        const Scissors = Lucide.Scissors;
+        const Briefcase = Lucide.Briefcase;
+        const Coins = Lucide.Coins;
+        const MessageSquare = Lucide.MessageSquare;
+        const Edit3 = Lucide.Edit3;
+        const FileText = Lucide.FileText;
+        const EyeOff = Lucide.EyeOff;
+        const Moon = Lucide.Moon;
+        const Sun = Lucide.Sun;
+        const Menu = Lucide.Menu;
+        const Smartphone = Lucide.Smartphone;
+        const Instagram = Lucide.Instagram;
+        const Facebook = Lucide.Facebook;
+        const Twitter = Lucide.Twitter;
+        const Chrome = Lucide.Chrome;
+        const CreditCard = Lucide.CreditCard;
+        const PlusCircle = Lucide.PlusCircle;
+        const MinusCircle = Lucide.MinusCircle;
+        const Layout = Lucide.Layout;
+        const Box = Lucide.Box;
+        const Brush = Lucide.Brush;
+        const Gem = Lucide.Gem;
+        const Coffee = Lucide.Coffee;
+        const Code = Lucide.Code;
+        const Music = Lucide.Music;
+        const Video = Lucide.Video;
+        const Play = Lucide.Play;
+        const Pause = Lucide.Pause;
+        const Link = Lucide.Link;
+
+        
+function App() {
+  const [media, setMedia] = useState('メール'); // 'メール' or 'DM'
+  const [category, setCategory] = useState('商品購入');
+  const [formData, setFormData] = useState({
+    customerName: '',
+    productName: '',
+    quantity: '',
+    orderNumber: '',
+    trackingNumber: '',
+  });
+  const [inputText, setInputText] = useState('');
+  const [generatedText, setGeneratedText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const categories = [
+    { id: '商品購入', icon: Package, label: '商品購入' },
+    { id: '商品送付', icon: Truck, label: '商品送付' },
+    { id: 'クレーム対応', icon: AlertOctagon, label: 'クレーム対応' },
+    { id: 'その他', icon: MoreHorizontal, label: 'その他' },
+  ];
+
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleCategoryChange = (catId) => {
+    setCategory(catId);
+    // カテゴリ変更時にフォームの一部をクリアするかは運用次第ですが、今回は保持します
+  };
+
+  const handleGenerate = async () => {
+    if (!inputText.trim() && !formData.customerName && !formData.productName) {
+      setError('お客様名や状況などの情報を入力してください。');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+    setGeneratedText('');
+
+    const apiKey = ""; // 実行環境で自動付与されます
+    const endpoint = `/api/ai`;
+
+    const systemPrompt = `あなたは「Linklabo」の優秀なカスタマーサポートAIです。
+以下の指示に従い、顧客への返信文章を作成してください。
+- 丁寧でプロフェッショナルなビジネス日本語を使用すること。
+- メールの場合は件名（件名：〜）と本文を出力してください。DMの場合は件名は不要です。
+- 提供された情報（お客様名、商品名、数量など）を文章に自然に組み込むこと。
+- Linklaboのブランドイメージを損なわない、誠実な対応を心がけること。`;
+
+    let userPrompt = `【送信媒体】: ${media}\n【カテゴリ】: ${category}\n\n`;
+    
+    if (formData.customerName) userPrompt += `【お客様名】: ${formData.customerName} 様\n`;
+    if (formData.productName) userPrompt += `【対象商品名】: ${formData.productName}\n`;
+    if (formData.quantity) userPrompt += `【数量】: ${formData.quantity}\n`;
+    if (formData.orderNumber) userPrompt += `【注文・予約番号】: ${formData.orderNumber}\n`;
+    if (formData.trackingNumber) userPrompt += `【配送業者・追跡番号】: ${formData.trackingNumber}\n`;
+    
+    userPrompt += `\n【状況・お客様からのコメント】:\n${inputText}\n\n`;
+    userPrompt += `上記の内容に基づいて、${media}用の適切な返信文を作成してください。\n`;
+
+    if (media === 'メール') {
+      userPrompt += `\n※メールの末尾には必ず以下の署名をそのまま挿入してください。
+--------------------------------------------------
+Linklabo カスタマーサポート
+公式サイト:https://linklabo-7bd28.web.app/
+Instagram：https://www.instagram.com/linklabo2026/
+お問い合わせ:linklabo2026@gmail.com
+--------------------------------------------------`;
+    }
+
+    const payload = {
+      contents: [{ parts: [{ text: userPrompt }] }],
+      systemInstruction: { parts: [{ text: systemPrompt }] }
+    };
+
+    const fetchWithRetry = async (retries = 5, delay = 1000) => {
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) throw new Error('APIリクエストに失敗しました');
+        
+        const data = await response.json();
+        if (data.candidates && data.candidates[0].content.parts[0].text) {
+          return data.candidates[0].content.parts[0].text;
+        } else {
+          throw new Error('予期せぬレスポンス形式です');
+        }
+      } catch (err) {
+        if (retries > 0) {
+          await new Promise(res => setTimeout(res, delay));
+          return fetchWithRetry(retries - 1, delay * 2);
+        }
+        throw err;
+      }
+    };
+
+    try {
+      const text = await fetchWithRetry();
+      setGeneratedText(text);
+    } catch (err) {
+      setError('AIによる生成に失敗しました。しばらく経ってから再度お試しください。');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCopy = () => {
+    if (!generatedText) return;
+    document.execCommand('copy');
+    navigator.clipboard.writeText(generatedText).catch(() => {
+      const textArea = document.createElement("textarea");
+      textArea.value = generatedText;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+    });
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const processFile = (file) => {
+    if (!file) return;
+    if (file.type === "text/plain" || file.name.endsWith('.txt') || file.name.endsWith('.csv') || file.name.endsWith('.md')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setInputText(prev => prev + (prev ? '\n\n' : '') + `[添付ファイル: ${file.name}]\n` + e.target.result);
+      };
+      reader.readAsText(file);
+    } else {
+      setInputText(prev => prev + (prev ? '\n' : '') + `[参考ファイル受領: ${file.name}]`);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) processFile(files[0]);
+  };
+
+  const handleFileSelect = (e) => {
+    const files = e.target.files;
+    if (files.length > 0) processFile(files[0]);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans sm:p-4 md:p-8">
+      <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 flex flex-col h-[calc(100vh-2rem)] md:h-auto md:min-h-[850px]">
+        
+        {/* Header */}
+        <header className="bg-blue-600 text-white p-6 flex items-center space-x-3 shrink-0">
+          <div className="bg-white p-2 rounded-lg">
+            <Mail className="w-6 h-6 text-blue-600" />
+          </div>
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight">Linklabo AI アシスタント</h1>
+            <p className="text-blue-100 text-sm md:text-base">メール・DM返信文の自動生成</p>
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col md:flex-row gap-6">
+          
+          {/* Left Column: Input */}
+          <div className="w-full md:w-1/2 flex flex-col space-y-6">
+            
+            {/* 1. 媒体の選択 */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">1. 送信媒体を選択</label>
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => setMedia('メール')}
+                  className={`flex-1 flex items-center justify-center p-3 rounded-xl border transition-all ${
+                    media === 'メール' ? 'border-blue-600 bg-blue-50 text-blue-700 font-bold' : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <AtSign className="w-5 h-5 mr-2" />
+                  メール (署名あり)
+                </button>
+                <button
+                  onClick={() => setMedia('DM')}
+                  className={`flex-1 flex items-center justify-center p-3 rounded-xl border transition-all ${
+                    media === 'DM' ? 'border-blue-600 bg-blue-50 text-blue-700 font-bold' : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <Smartphone className="w-5 h-5 mr-2" />
+                  Instagram DM等
+                </button>
+              </div>
+            </div>
+
+            {/* 2. カテゴリ Selection */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">2. 対応カテゴリ</label>
+              <div className="grid grid-cols-2 gap-2">
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => handleCategoryChange(cat.id)}
+                    className={`flex items-center p-3 rounded-xl border transition-all duration-200 ${
+                      category === cat.id
+                        ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
+                        : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <cat.icon className={`w-5 h-5 mr-2 ${category === cat.id ? 'text-blue-600' : 'text-slate-400'}`} />
+                    <span className="font-medium text-sm">{cat.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. アシスト入力フォーム */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <label className="block text-sm font-semibold text-slate-700 mb-3">3. 基本情報 (わかる範囲で入力)</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  name="customerName"
+                  value={formData.customerName}
+                  onChange={handleInputChange}
+                  placeholder="お客様のお名前 (例: 山田太郎)"
+                  className="w-full p-2.5 text-sm border border-slate-300 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+                <input
+                  type="text"
+                  name="productName"
+                  value={formData.productName}
+                  onChange={handleInputChange}
+                  placeholder="対象の商品名"
+                  className="w-full p-2.5 text-sm border border-slate-300 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+                {(category === '商品購入' || category === '商品送付' || category === 'クレーム対応') && (
+                  <input
+                    type="text"
+                    name="quantity"
+                    value={formData.quantity}
+                    onChange={handleInputChange}
+                    placeholder="数量 (例: 2個)"
+                    className="w-full p-2.5 text-sm border border-slate-300 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                )}
+                {(category === '商品購入' || category === '商品送付') && (
+                  <input
+                    type="text"
+                    name="orderNumber"
+                    value={formData.orderNumber}
+                    onChange={handleInputChange}
+                    placeholder="注文番号 (任意)"
+                    className="w-full p-2.5 text-sm border border-slate-300 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                )}
+                {(category === '商品送付') && (
+                  <input
+                    type="text"
+                    name="trackingNumber"
+                    value={formData.trackingNumber}
+                    onChange={handleInputChange}
+                    placeholder="配送業者・追跡番号"
+                    className="w-full p-2.5 text-sm border border-slate-300 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 md:col-span-2"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* 4. 詳細状況・コメント */}
+            <div className="flex-1 flex flex-col min-h-[150px]">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                4. 状況・コメント（AIへの指示や受信内容）
+              </label>
+              
+              <div 
+                className={`relative flex-1 border-2 rounded-xl transition-all duration-200 overflow-hidden ${
+                  isDragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-white'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <textarea
+                  className="w-full h-full p-3 text-sm resize-none outline-none bg-transparent"
+                  placeholder="お客様からのメッセージ内容や、「お詫びして交換を提案する」などのAIへの指示を入力してください。ファイルをドロップして読み込むことも可能です。"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                />
+                {isDragging && (
+                  <div className="absolute inset-0 bg-blue-500/10 flex flex-col items-center justify-center pointer-events-none backdrop-blur-[1px]">
+                    <UploadCloud className="w-10 h-10 text-blue-600 mb-2" />
+                    <span className="text-blue-700 font-bold text-sm">ドロップして読み込み</span>
+                  </div>
+                )}
+              </div>
+              <div className="mt-2 flex justify-between items-center text-xs text-slate-500">
+                <button onClick={() => fileInputRef.current?.click()} className="flex items-center hover:text-blue-600">
+                  <UploadCloud className="w-4 h-4 mr-1" />
+                  ファイル読込
+                </button>
+                <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
+              </div>
+            </div>
+
+            {/* Generate Button */}
+            <button
+              onClick={handleGenerate}
+              disabled={isLoading || (!inputText.trim() && !formData.customerName && !formData.productName)}
+              className="w-full py-4 bg-slate-900 hover:bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center transition-all disabled:opacity-50 shadow-md active:scale-[0.98]"
+            >
+              {isLoading ? (
+                <><Loader2 className="w-5 h-5 mr-2 animate-spin" />AIが返信を生成中...</>
+              ) : (
+                <><Send className="w-5 h-5 mr-2" />AIで返信文を作成する</>
+              )}
+            </button>
+            
+            {error && (
+              <div className="p-3 bg-red-50 text-red-600 rounded-lg flex items-start text-sm border border-red-100">
+                <AlertCircle className="w-5 h-5 mr-2 shrink-0" />
+                <p>{error}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Output */}
+          <div className="w-full md:w-1/2 flex flex-col h-full mt-6 md:mt-0">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-slate-700">
+                生成された返信文 ({media})
+              </label>
+              {generatedText && (
+                <button
+                  onClick={handleCopy}
+                  className="flex items-center text-sm px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 shadow-sm"
+                >
+                  {copied ? (
+                    <><CheckCircle2 className="w-4 h-4 mr-1.5 text-green-500" />コピー完了</>
+                  ) : (
+                    <><Copy className="w-4 h-4 mr-1.5" />コピー</>
+                  )}
+                </button>
+              )}
+            </div>
+            
+            <div className="flex-1 relative rounded-xl border border-slate-200 bg-slate-50 overflow-hidden shadow-inner min-h-[400px]">
+              {generatedText ? (
+                <div className="absolute inset-0 p-5 overflow-y-auto whitespace-pre-wrap text-slate-700 leading-relaxed font-mono text-sm">
+                  {generatedText}
+                </div>
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-6 text-center">
+                  <MessageSquare className="w-12 h-12 mb-3 opacity-20" />
+                  <p className="text-sm">左側で情報を入力し、<br/>「AIで返信文を作成する」を押してください。</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
