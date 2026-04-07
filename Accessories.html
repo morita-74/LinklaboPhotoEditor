@@ -323,22 +323,24 @@
             basePrompt += "Look: Product photography, showing the WHOLE object, studio lighting, white background. ";
 
             try {
-                const results = [];
-                // We'll call our internal API 3 times to get 3 variations (or one call if the API handles it)
-                // For simplicity and since our API currently handles one generation, we call it in a loop
-                for (let i = 0; i < 3; i++) {
+                // Generate 3 variations in parallel for a faster "WOW" experience
+                const generationTasks = [1, 2, 3].map(async (i) => {
                     const res = await fetch('/api/ai', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            prompt: `${basePrompt} Variation ${i+1}: Unique arrangement.`,
-                            image: uploadedImages[0]?.src.split(',')[1] // Just the first image for now, or could combine
+                            prompt: `${basePrompt} Variation ${i}: Unique arrangement.`,
+                            image: uploadedImages[0]?.src.split(',')[1]
                         })
                     });
-
                     const data = await res.json();
-                    if (data.image) results.push(`data:image/png;base64,${data.image}`);
-                }
+                    if (data.image) return `data:image/png;base64,${data.image}`;
+                    if (data.error) throw new Error(data.error);
+                    return null;
+                });
+
+                const rawResults = await Promise.all(generationTasks);
+                const results = rawResults.filter(r => r !== null);
 
                 if (results.length === 0) throw new Error("画像を生成できませんでした。");
                 renderResults(results);
