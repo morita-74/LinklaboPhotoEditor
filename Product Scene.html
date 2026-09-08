@@ -87,7 +87,7 @@
                     <p class="text-xs text-blue-400">商品を実際に使っている自然な写真を生成します</p>
                 </div>
             </div>
-            <span class="text-xs text-slate-500">Powered by Gemini</span>
+            <span class="text-xs text-slate-500">Powered by Gemini 3 Pro Image (Nano Banana Pro)</span>
         </div>
 
         <!-- Main -->
@@ -140,7 +140,7 @@
 
                 <!-- Status -->
                 <div class="flex justify-between text-xs text-slate-500 px-2">
-                    <span>商品の形・色・ロゴは保持したまま、背景と使用シーンだけを再構築します</span>
+                    <span>Model: gemini-3-pro-image-preview（商品の形・色・ロゴは保持したまま背景と使用シーンだけを再構築）</span>
                     <span id="statusText">Ready</span>
                 </div>
             </div>
@@ -178,6 +178,7 @@
     <script>
         // --- Configuration ---
         const API_URL = `/api/ai`;
+        const MODEL_NAME = "gemini-3-pro-image-preview"; // Nano Banana Pro
 
         const SITUATIONS = [
             { id: 'kitchen', label: 'キッチン', icon: 'utensils', desc: '明るい自宅のキッチンで、実際に料理や準備をしながらこの商品を使っている自然な一コマ。窓からの柔らかい朝の光が差し込んでいる。' },
@@ -364,6 +365,7 @@ Output only the final photographic image, nothing else.`;
                 const prompt = buildPrompt(situationText);
 
                 const payload = {
+                    model: MODEL_NAME,
                     contents: [{
                         parts: [
                             { text: prompt },
